@@ -51,7 +51,7 @@ jobs:
           sh -n packaging/container/rootfs/etc/s6-overlay/s6-rc.d/blackhole-threats/finish
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
