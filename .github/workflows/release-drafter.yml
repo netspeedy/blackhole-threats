@@ -82,7 +82,7 @@ jobs:
 
       - name: Auto-label pull request
         if: github.event_name == 'pull_request_target'
-        uses: release-drafter/release-drafter/autolabeler@v7
+        uses: release-drafter/release-drafter/autolabeler@v7.6.0
         with:
           config-name: release-drafter.yml
         env:
@@ -135,7 +135,7 @@ jobs:
 
       - name: Update draft release
         if: github.event_name != 'pull_request_target' && steps.release_gate.outputs.release_required == 'true'
-        uses: release-drafter/release-drafter@v7
+        uses: release-drafter/release-drafter@v7.6.0
         with:
           config-name: release-drafter.yml
         env:
