@@ -181,7 +181,13 @@ Current behavior:
 
 - Dependabot PRs and scheduled build/runtime pin refresh PRs run through
   `Build and Validate`
-- green PRs can be merged directly by the dedicated automation merge workflow
+- the pin refresh PR is opened with `GITHUB_TOKEN`, so its `pull_request`
+  workflows don't start; the refresh dispatches `Build and Validate` and a
+  validation-only `Container Image` build on its branch instead
+- green PRs can be merged directly by the dedicated automation merge workflow;
+  Dependabot PRs merge as soon as `Build and Validate` completes, and a daily
+  05:00 UTC sweep merges the rest, including the pin refresh, once both
+  `Build and Validate` and `Container Image` have passed on the PR head
 - when GitHub cannot merge immediately but the PR is otherwise eligible, the
   workflow enables GitHub auto-merge so the PR can land as soon as the
   remaining repository requirements are satisfied
