@@ -1,9 +1,14 @@
 name: Dependabot Merge
 
-run-name: "Dependabot Merge${{ github.event.workflow_run.pull_requests[0].number && format(' - PR #{0}', github.event.workflow_run.pull_requests[0].number) || ' - manual scan' }}"
+run-name: "Dependabot Merge${{ github.event.workflow_run.pull_requests[0].number && format(' - PR #{0}', github.event.workflow_run.pull_requests[0].number) || github.event_name == 'schedule' && ' - daily sweep' || ' - manual scan' }}"
 
 on:
   workflow_dispatch:
+  # Daily, after Refresh Build and Runtime Pins (04:23). That workflow validates its pull
+  # request with dispatched Build and Validate and Container Image runs, and runs started with
+  # GITHUB_TOKEN don't fire workflow_run, so this sweep is what merges it.
+  schedule:
+    - cron: "0 5 * * *"
   workflow_run:
     workflows:
       - Build and Validate
@@ -28,6 +33,7 @@ jobs:
     name: Review and Merge Automation Pull Requests
     if: |
       github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'schedule' ||
       (
         github.event.workflow_run.conclusion == 'success' &&
         (github.event.workflow_run.event == 'pull_request' || github.event.workflow_run.event == 'workflow_dispatch') &&
@@ -296,7 +302,13 @@ jobs:
                 validation_detail=' Build and Validate succeeded for the current PR head revision via the triggering workflow run.'
               fi
             elif validation_detail="$(build_validate_detail_for_head "${head_sha}")"; then
-              :
+              # Build and Validate doesn't build the image, and the pin refresh only changes
+              # the Dockerfile, so a sweep also wants a green Container Image run.
+              if [ -z "$(latest_successful_run "Container Image" "${head_sha}")" ]; then
+                skipped=$((skipped + 1))
+                printf '| [#%s](%s) | skipped | No successful Container Image run was found for the current PR head revision. |\n' "${pr_number}" "${url}" >> "${GITHUB_STEP_SUMMARY}"
+                continue
+              fi
             else
               skipped=$((skipped + 1))
               printf '| [#%s](%s) | skipped | No successful Build and Validate run was found for the current PR head revision. |\n' "${pr_number}" "${url}" >> "${GITHUB_STEP_SUMMARY}"

@@ -199,6 +199,10 @@ If you see a non-empty draft for a tag that should already be published:
 Checks:
 
 - confirm `Build and Validate` succeeded on the PR head revision
+- for a PR merged by the daily sweep, such as the build/runtime pin refresh,
+  confirm `Container Image` succeeded on the head revision too; the refresh
+  dispatches both, and `Dependabot Merge` can be dispatched by hand to sweep
+  again without waiting for 05:00 UTC
 - confirm the PR is still open and not in draft state
 - confirm it is authored by `dependabot[bot]` or `github-actions[bot]`
 - confirm there are no merge conflicts

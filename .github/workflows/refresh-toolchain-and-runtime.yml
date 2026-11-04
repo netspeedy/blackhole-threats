@@ -74,6 +74,10 @@ jobs:
             dependencies
             docker
 
+      # A pull request opened with GITHUB_TOKEN doesn't run its pull_request workflows, so both
+      # validations are dispatched on the branch. Without a release_ref, Container Image only
+      # builds and smoke tests the image. The daily Dependabot Merge sweep merges the pull
+      # request once both have passed.
       - name: Trigger pull request validation
         if: steps.create-pr.outputs.pull-request-number != ''
         env:
@@ -83,3 +87,4 @@ jobs:
         run: |
           set -euo pipefail
           gh workflow run build-and-validate.yml --ref "${PR_BRANCH}"
+          gh workflow run container-image.yml --ref "${PR_BRANCH}"
