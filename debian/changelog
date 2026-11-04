@@ -1,3 +1,65 @@
+blackhole-threats (1.1.6-1) stable; urgency=medium
+
+  * Add README hero image.
+  * Align README header style.
+  * Refresh README hero image.
+  * Use full-resolution README hero.
+  * Simplify README hero image.
+  * Restructure README and relocate operator examples to guides.
+  * Redesign Pages landing site.
+  * Improve website install options.
+  * Add social share card to Pages site.
+  * Polish website product copy.
+  * Refine social preview metadata.
+  * Bump github.com/pelletier/go-toml/v2 from 2.4.0 to 2.4.1.
+  * Bump github.com/pelletier/go-toml/v2 from 2.4.1 to 2.4.2.
+  * Bump google.golang.org/grpc from 1.81.1 to 1.82.0.
+  * Bump golang.org/x/text from 0.38.0 to 0.39.0.
+  * Bump github.com/pelletier/go-toml/v2 from 2.4.2 to 2.4.3.
+  * Bump golang.org/x/sys from 0.46.0 to 0.47.0.
+  * Bump golang.org/x/text from 0.39.0 to 0.40.0.
+  * Bump golang.org/x/net from 0.56.0 to 0.57.0.
+  * Bump actions/setup-node from 6 to 7.
+  * Bump actions/setup-go from 6 to 7.
+  * Bump google.golang.org/grpc from 1.82.0 to 1.82.1.
+  * Bump go.yaml.in/yaml/v3 from 3.0.4 to 3.0.5.
+  * Bump release-drafter/release-drafter from 7 to 7.6.0.
+  * Bump docker/login-action from 4 to 4.5.2.
+  * Bump google.golang.org/grpc from 1.82.1 to 1.83.0.
+  * Bump release-drafter/release-drafter from 7.6.0 to 7.7.0.
+  * Bump docker/login-action from 4.5.2 to 4.6.0.
+  * Bump google.golang.org/protobuf from 1.36.11 to 1.36.12.
+  * Bump golang.org/x/text from 0.40.0 to 0.41.0.
+  * Bump github.com/sirupsen/logrus from 1.9.4 to 1.10.0.
+  * Bump golang.org/x/net from 0.57.0 to 0.58.0.
+  * Bump github.com/sirupsen/logrus from 1.10.0 to 1.10.1.
+  * Bump google.golang.org/grpc from 1.83.0 to 1.83.1.
+  * Bump github.com/sirupsen/logrus from 1.10.1 to 1.10.2.
+  * Bump google.golang.org/grpc from 1.83.1 to 1.83.2.
+  * Bump golang.org/x/sys from 0.47.0 to 0.48.0.
+  * Bump golang.org/x/text from 0.41.0 to 0.42.0.
+  * Bump golang.org/x/net from 0.58.0 to 0.59.0.
+  * Bump google.golang.org/grpc from 1.83.2 to 1.84.0.
+  * Bump golang.org/x/sys from 0.48.0 to 0.49.0.
+  * Bump golang.org/x/text from 0.42.0 to 0.43.0.
+  * Bump release-drafter/release-drafter from 7.7.0 to 7.10.0.
+  * Bump golang.org/x/net from 0.59.0 to 0.61.0.
+  * Bump docker/login-action from 4.6.0 to 4.7.0.
+  * Bump golang.org/x/net from 0.61.0 to 0.62.0.
+  * Bump google.golang.org/grpc from 1.84.0 to 1.85.0.
+  * Bump go.yaml.in/yaml/v3 from 3.0.5 to 3.0.6.
+  * Refresh build and runtime pins.
+  * Sweep automation pull requests daily (#94).
+  * Move the website out of .github so Dependabot can update it (#95).
+  * Bump vite from 8.0.16 to 8.3.5 in /website.
+  * Bump postcss from 8.5.15 to 8.5.32 in /website.
+  * Bump picomatch from 4.0.4 to 4.0.7 in /website.
+  * Bump source-map-js from 1.2.1 to 1.2.2 in /website.
+  * Bump nanoid from 3.3.12 to 3.3.20 in /website.
+  * Bump lightningcss from 1.32.0 to 1.33.0 in /website.
+
+ -- Simon Oakes <813389+soakes@users.noreply.github.com>  Wed, 04 Nov 2026 02:28:12 +0000
+
 blackhole-threats (1.1.5-1) stable; urgency=medium
 
   * Add open source impact summary.
