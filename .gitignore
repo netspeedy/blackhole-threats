@@ -19,3 +19,6 @@
 # Website build outputs
 /website/dist/
 /website/node_modules/
+
+# Font cache written by scripts/readme/measure_headline.py
+/scripts/readme/inter-latin.ttf
