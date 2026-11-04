@@ -59,7 +59,7 @@ website-build:
 	npm --prefix $(WEBSITE_DIR) run build
 
 readme-hero:
-	python3 scripts/readme/build_readme_hero.py
+	uv run scripts/readme/build_readme_hero.py
 
 clean:
 	rm -rf _build dist
