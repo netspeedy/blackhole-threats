@@ -257,7 +257,7 @@ The banner at the top of this page and the social cards are generated. Edit the
 copy, layout or timing in `scripts/readme/build_readme_hero.py` and run `make
 readme-hero`. That rebuilds `assets/blackhole-threats-readme-hero.svg`, the
 website's `website/public/og-image.png` and
-`assets/blackhole-threats-social-preview.png`, which is the image for GitHub's
+`assets/blackhole-threats-social-card.png`, which is the image for GitHub's
 social preview and is uploaded by hand in the repository settings. It runs the
 script with `uv`, which installs the pinned fontTools it subsets the fonts with, and
 renders the cards with headless Chrome or Chromium. The fonts come from
