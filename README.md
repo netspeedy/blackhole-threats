@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/blackhole-threats-readme-hero.svg" width="960" alt="blackhole-threats - threat feeds in, blackhole routes out. Text, JSON and local feeds, summarised into BGP blackhole routes. A failed feed keeps its last good set.">
+  <img src="assets/blackhole-threats-readme-hero.svg" width="960" alt="blackhole-threats - threat feeds in, blackhole routes out. Text, JSON and local threat feeds, summarised and announced as ASN:666 blackholes. Stale ones are withdrawn.">
 </p>
 
 <p align="center">
