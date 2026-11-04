@@ -258,11 +258,12 @@ copy, layout or timing in `scripts/readme/build_readme_hero.py` and run `make
 readme-hero`. That rebuilds `assets/blackhole-threats-readme-hero.svg`, the
 website's `website/public/og-image.png` and
 `assets/blackhole-threats-social-preview.png`, which is the image for GitHub's
-social preview and is uploaded by hand in the repository settings. It downloads the
-font subsets from Google Fonts, so it needs network access, and it renders the cards
-with headless Chrome or Chromium. If you change the headline's words, measure them
-again with `scripts/readme/measure_headline.py`, which explains its own
-dependencies.
+social preview and is uploaded by hand in the repository settings. It runs the
+script with `uv`, which installs the pinned fontTools it subsets the fonts with, and
+renders the cards with headless Chrome or Chromium. The fonts come from
+assets.netspeedy.io, so the first run needs network access. If you change the
+headline's words, measure them again with `uv run
+scripts/readme/measure_headline.py`.
 
 ## License
 

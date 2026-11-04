@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["fonttools==4.67.0", "brotli==1.2.0"]
+# ///
 """Build the animated README hero, assets/blackhole-threats-readme-hero.svg.
 
 The banner follows the soakes/cv README hero, like the other netspeedy ones: the ring mark, a
@@ -11,31 +15,35 @@ the same order as their chips, and the build fails if any two feed lines cross.
 Edit the copy, layout or timing here and run `make readme-hero` rather than editing the
 generated SVG. The headline is positioned from measured advances (see ADVANCE); if you change
 its words, measure them again with measure_headline.py. Inter and JetBrains Mono (SIL Open Font
-License 1.1) are fetched from Google Fonts, subset to the characters the finished SVG renders,
-and embedded, so the hero renders the same on every platform. Needs network access.
+License 1.1) are the Google Fonts builds, kept on assets.netspeedy.io and pinned by checksum in
+FAMILIES. They're subset here to the characters the finished SVG renders and embedded, so the
+hero renders the same on every platform, and because fontTools is pinned too, a rebuild gives
+the same bytes. It runs under `uv run`, which installs that fontTools, and the first run needs
+network access to download the fonts.
 """
 
 from __future__ import annotations
 
 import base64
+import hashlib
+import io
 import math
 import os
 import random
-import re
 import shutil
 import subprocess
 import tempfile
-import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+from fontTools import subset
+from fontTools.ttLib import TTFont
+
 ROOT = Path(__file__).resolve().parents[2]
 OUTPUT = ROOT / "assets" / "blackhole-threats-readme-hero.svg"
-USER_AGENT = (
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
-)
+# assets.netspeedy.io's Cloudflare zone turns away urllib's default user agent.
+USER_AGENT = "netspeedy-readme-hero"
 
 # The website's coral and cyan (website/style.css) and the favicon's rings, with the same inks
 # as the other netspeedy banners so they read as one family.
@@ -55,10 +63,25 @@ HOT = "#FFE9C2"
 DISK = [(0, HOT), (0.22, AMBER), (0.55, CORAL), (1, VIOLET)]
 FEEDS = [("TEXT FEED", CYAN), ("JSON FEED", VIOLET_2), ("LOCAL FILE", AMBER)]
 
-# Fonts: css class -> (Google Fonts family spec, embedded family name).
+# Fonts: css class -> (source font, its sha256, weight range, embedded family name). The
+# sources are the Google Fonts builds of Inter 4.001 and JetBrains Mono 2.211, kept on
+# assets.netspeedy.io and cached after the first download. A new version goes up there
+# under a new filename, so these files never change.
+FONT_HOST = "https://assets.netspeedy.io/versioned/fonts"
+FONT_CACHE = Path.home() / ".cache" / "netspeedy-fonts"
 FAMILIES = {
-    "sans": ("Inter:opsz,wght@14..32,400..800", "Hero Sans"),
-    "mono": ("JetBrains Mono:wght@400..700", "Hero Mono"),
+    "sans": (
+        "inter-opsz-wght.4.001.ttf",
+        "29160a80ff49ddcab2c97711247e08b1fab27a484a329ce8b813d820dc559031",
+        "400 800",
+        "Hero Sans",
+    ),
+    "mono": (
+        "jetbrains-mono-wght.2.211.ttf",
+        "48715a42ec242c21e9f02692891e147d022299a52e48d5e413e1a942193ffeda",
+        "400 700",
+        "Hero Mono",
+    ),
 }
 FONT_CSS = (
     ".sans{font-family:'Hero Sans',-apple-system,'Segoe UI','Helvetica Neue',Arial,sans-serif;"
@@ -99,6 +122,40 @@ def fetch(url: str) -> bytes:
         return response.read()
 
 
+def font_source(name: str, sha256: str) -> bytes:
+    """A pinned source font from FONT_HOST, checked against its sha256 and cached."""
+    cached = FONT_CACHE / name
+    if cached.exists():
+        data = cached.read_bytes()
+        if hashlib.sha256(data).hexdigest() == sha256:
+            return data
+    data = fetch(f"{FONT_HOST}/{name}")
+    if hashlib.sha256(data).hexdigest() != sha256:
+        raise SystemExit(f"{FONT_HOST}/{name} doesn't match its pinned sha256")
+    FONT_CACHE.mkdir(parents=True, exist_ok=True)
+    cached.write_bytes(data)
+    return data
+
+
+def subset_font(source: bytes, text: str) -> bytes:
+    """The variable font cut down to the given characters, as woff2.
+
+    Every axis is kept: trimming them with fontTools' instancer moved the headline's
+    pixels. The source's head timestamp is kept too, so the same text always gives the
+    same bytes.
+    """
+    font = TTFont(io.BytesIO(source), recalcTimestamp=False)
+    options = subset.Options()
+    options.hinting = False
+    subsetter = subset.Subsetter(options)
+    subsetter.populate(text=text)
+    subsetter.subset(font)
+    font.flavor = "woff2"
+    out = io.BytesIO()
+    font.save(out)
+    return out.getvalue()
+
+
 def collect_chars(svg: str) -> dict[str, set[str]]:
     """Characters rendered by each font class, inherited through groups."""
     chars: dict[str, set[str]] = {name: set() for name in FAMILIES}
@@ -132,28 +189,17 @@ def font_faces(svg: str) -> str:
     """One @font-face per family, subset to exactly the characters the SVG renders."""
     chars = collect_chars(svg)
     faces = []
-    for cls, (spec, local) in FAMILIES.items():
+    for cls, (name, sha256, weights, local) in FAMILIES.items():
         used = chars[cls]
         if not used:
             continue
         text = "".join(sorted((used - set("\n\t\r")) | {" "}))
-        query = urllib.parse.urlencode(
-            {"family": spec, "text": text, "display": "block"}
+        data = base64.b64encode(subset_font(font_source(name, sha256), text)).decode()
+        faces.append(
+            f"@font-face{{font-family:'{local}';font-weight:{weights};"
+            f"font-style:normal;src:url(data:font/woff2;base64,{data}) "
+            "format('woff2');}"
         )
-        css = fetch(f"https://fonts.googleapis.com/css2?{query}").decode()
-        seen = set()
-        # Google serves one variable file covering every weight; embed each file once.
-        for weight, url in re.findall(
-            r"font-weight:\s*([\d ]+);.*?src:\s*url\(([^)]+)\)", css, re.S
-        ):
-            if url in seen:
-                continue
-            seen.add(url)
-            data = base64.b64encode(fetch(url)).decode()
-            faces.append(
-                f"@font-face{{font-family:'{local}';font-weight:{weight.strip()};"
-                f"font-style:normal;src:url(data:font/woff2;base64,{data}) format('woff2');}}"
-            )
     return "".join(faces)
 
 
