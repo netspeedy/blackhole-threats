@@ -66,7 +66,7 @@ flowchart LR
 | `examples/` | Reference configuration for operators and smoke tests |
 | `packaging/container/` | Container rootfs, entrypoint helpers, and S6 service definitions |
 | `debian/` | Debian package metadata and maintainer scripts |
-| `.github/assets/website/` | Vite-based GitHub Pages site that fronts the signed APT repository |
+| `website/` | Vite-based GitHub Pages site that fronts the signed APT repository |
 
 ## Runtime Lifecycle
 

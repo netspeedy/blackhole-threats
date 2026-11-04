@@ -21,3 +21,4 @@ scripts
 website/.astro/
 website/dist/
 website/node_modules/
+website

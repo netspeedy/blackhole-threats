@@ -17,5 +17,5 @@
 .tmp-config/
 
 # Website build outputs
-/.github/assets/website/dist/
-/.github/assets/website/node_modules/
+/website/dist/
+/website/node_modules/

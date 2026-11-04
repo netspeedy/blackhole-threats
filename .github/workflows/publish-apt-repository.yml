@@ -21,7 +21,7 @@ permissions:
 env:
   CHECKOUT_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.release_ref || github.sha }}
   RELEASE_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.release_ref || github.ref_name }}
-  WEBSITE_DIR: .github/assets/website
+  WEBSITE_DIR: website
 
 jobs:
   verify-release-tag:

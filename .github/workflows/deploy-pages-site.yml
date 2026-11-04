@@ -19,7 +19,7 @@ permissions:
   contents: read
 
 env:
-  WEBSITE_DIR: .github/assets/website
+  WEBSITE_DIR: website
 
 jobs:
   build:
