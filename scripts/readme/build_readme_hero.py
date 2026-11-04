@@ -19,8 +19,12 @@ from __future__ import annotations
 
 import base64
 import math
+import os
 import random
 import re
+import shutil
+import subprocess
+import tempfile
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -730,15 +734,173 @@ def build_svg(spec: dict = CARD) -> str:
     return "\n".join(lines) + "\n"
 
 
+# Social cards
+
+# Both cards are the hero recomposed and frozen at its rest frame. The website's og:image is
+# 1200x630, the size link previews expect, and is only written when the repo has a website.
+# The GitHub social preview is 1280x640 and is uploaded by hand under Settings > General >
+# Social preview, since GitHub has no API for it.
+REPO = "blackhole-threats"
+OG_CARD = ROOT / "website" / "public" / "og-image"
+PREVIEW_CARD = ROOT / "assets" / f"{REPO}-social-preview"
+SVG_NS = "http://www.w3.org/2000/svg"
+CHROME_CANDIDATES = (
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "/Applications/Chromium.app/Contents/MacOS/Chromium",
+    "google-chrome",
+    "chromium",
+    "chromium-browser",
+)
+
+
+def build_social_svg(hero: str, width: int, height: int) -> str:
+    """The hero's copy column on the left and its scene on the right, scaled to fill the card."""
+    ET.register_namespace("", SVG_NS)
+    root = ET.fromstring(hero)
+
+    def tag(name: str) -> str:
+        return f"{{{SVG_NS}}}{name}"
+
+    children = list(root)
+    defs = root.find(tag("defs"))
+    style = defs.find(tag("style"))
+    style.text = (style.text or "") + "  *{animation:none !important}\n    "
+    frame = next(c for c in children if c.get("clip-path") == "url(#frame)")
+    # Everything after the clipped group, bar the frame's outline, is the copy column.
+    copy_els = [
+        c
+        for c in children[children.index(frame) + 1 :]
+        if not (c.tag == tag("rect") and c.get("fill") == "none")
+    ]
+    background = list(frame)
+    nebulae = [c for c in background[1:3] if c.tag == tag("ellipse")]
+    scene_els = background[
+        5:
+    ]  # after the base, the two nebulae and the two star groups
+
+    wide = width >= 1280
+    s_copy, s_scene = (1.2, 1.04) if wide else (1.12, 0.98)
+    margin = 60 if wide else 56
+    card = ET.Element(
+        tag("svg"),
+        {
+            "viewBox": f"0 0 {width} {height}",
+            "width": str(width),
+            "height": str(height),
+            "role": "img",
+            "aria-labelledby": "title desc",
+        },
+    )
+    card.extend([root.find(tag("title")), root.find(tag("desc")), defs])
+    ET.SubElement(
+        card,
+        tag("rect"),
+        {"width": str(width), "height": str(height), "fill": "url(#spaceBg)"},
+    )
+    glow = ET.SubElement(
+        card, tag("g"), {"transform": f"scale({width / 1200:.4f} {height / 400:.4f})"}
+    )
+    glow.extend(nebulae)
+    rng = random.Random(STAR_SEED)
+    stars = ET.SubElement(card, tag("g"), {"fill": "#CFE6FF"})
+    placed = 0
+    while placed < 150:
+        x, y = rng.uniform(6, width - 6), rng.uniform(6, height - 6)
+        if 40 <= x <= 680 and 110 <= y <= 530:  # keep the copy column clear
+            continue
+        placed += 1
+        radius = rng.choice([0.6, 0.7, 0.8, 0.9, 1.0, 1.2])
+        opacity = f"{rng.uniform(0.2, 0.65):.2f}"
+        ET.SubElement(
+            stars,
+            tag("circle"),
+            {"cx": num(x), "cy": num(y), "r": num(radius), "opacity": opacity},
+        )
+    scene_x = width - 12 - 1200 * s_scene
+    scene_y = (height - 400 * s_scene) / 2 + 6
+    scene = ET.SubElement(
+        card,
+        tag("g"),
+        {"transform": f"translate({num(scene_x)} {num(scene_y)}) scale({s_scene})"},
+    )
+    scene.extend(scene_els)
+    copy_x = margin - 46 * s_copy
+    copy_y = (height - 300 * s_copy) / 2 - 30 * s_copy - 8
+    column = ET.SubElement(
+        card,
+        tag("g"),
+        {"transform": f"translate({num(copy_x)} {num(copy_y)}) scale({s_copy})"},
+    )
+    column.extend(copy_els)
+    footer = ET.SubElement(
+        card,
+        tag("text"),
+        {
+            "class": "mono",
+            "x": str(margin),
+            "y": str(height - 44),
+            "font-size": "15",
+            "letter-spacing": "1.5",
+            "fill": "#808D9E",
+        },
+    )
+    footer.text = f"github.com/netspeedy/{REPO}"
+    return ET.tostring(card, encoding="unicode") + "\n"
+
+
+def render_png(svg_path: Path, png_path: Path, width: int, height: int) -> None:
+    """Screenshot the card in headless Chrome, which renders the embedded fonts exactly."""
+    chrome = os.environ.get("CHROME") or next(
+        (c for c in CHROME_CANDIDATES if Path(c).exists() or shutil.which(c)), None
+    )
+    if not chrome:
+        raise SystemExit(
+            "the social cards need Chrome or Chromium to render; set CHROME"
+        )
+    with tempfile.TemporaryDirectory() as profile:
+        subprocess.run(
+            [
+                chrome,
+                "--headless=new",
+                "--disable-gpu",
+                "--hide-scrollbars",
+                f"--user-data-dir={profile}",
+                f"--window-size={width},{height}",
+                f"--screenshot={png_path}",
+                svg_path.resolve().as_uri(),
+            ],
+            check=True,
+            capture_output=True,
+        )
+
+
+def write_social_cards(hero: str) -> None:
+    cards = [(PREVIEW_CARD, 1280, 640, False)]
+    if (ROOT / "website").is_dir():
+        cards.insert(0, (OG_CARD, 1200, 630, True))
+    for base, width, height, keep_svg in cards:
+        svg = build_social_svg(hero, width, height)
+        svg = svg.replace("__FONT_FACES__", font_faces(svg))
+        ET.fromstring(svg)
+        base.parent.mkdir(parents=True, exist_ok=True)
+        png = base.with_suffix(".png")
+        with tempfile.TemporaryDirectory() as tmp:
+            svg_path = base.with_suffix(".svg") if keep_svg else Path(tmp) / "card.svg"
+            svg_path.write_text(svg, encoding="utf-8")
+            render_png(svg_path, png, width, height)
+        print(f"Wrote {png.relative_to(ROOT)} ({width}x{height})")
+
+
 def main() -> None:
-    svg = build_svg()
-    svg = svg.replace("__FONT_FACES__", font_faces(svg))
+    hero = build_svg()
+    svg = hero.replace("__FONT_FACES__", font_faces(hero))
     if "http://" in svg.replace("http://www.w3.org/2000/svg", "") or "https://" in svg:
         raise SystemExit("external reference found in the hero SVG")
     ET.fromstring(svg)  # well-formed, or this raises
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(svg, encoding="utf-8")
     print(f"Wrote {OUTPUT.relative_to(ROOT)} ({len(svg.encode()) / 1024:.1f} KiB)")
+    write_social_cards(hero)
 
 
 if __name__ == "__main__":
