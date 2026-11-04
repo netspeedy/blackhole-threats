@@ -153,7 +153,7 @@ assert(indexHtml.includes('href="#install"'), 'index.html must retain the in-pag
 assert(indexHtml.includes('id="install"'), 'index.html must retain the install section target');
 
 const siteUrl = "https://netspeedy.github.io/blackhole-threats/";
-const ogImageUrl = "https://netspeedy.github.io/blackhole-threats/og-image.png?v=1";
+const ogImageUrl = "https://netspeedy.github.io/blackhole-threats/og-image.png?v=2";
 assert(indexHtml.includes(`<link rel="canonical" href="${siteUrl}" />`), "index.html must declare a canonical URL");
 assert(indexHtml.includes('name="robots" content="index, follow, max-image-preview:large"'), "index.html must allow large image previews for social crawlers");
 assert(indexHtml.includes(`property="og:url" content="${siteUrl}"`), "index.html must declare the og:url");
