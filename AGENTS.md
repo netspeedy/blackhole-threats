@@ -29,9 +29,11 @@ automation.
 - Keep Debian packaging metadata in `debian/`.
 - Keep release and repository automation scripts in `scripts/`.
 - Keep architecture and design notes in `docs/`.
-- Keep the GitHub Pages landing site in `.github/assets/website/`; treat it as
+- Keep the GitHub Pages landing site in `website/`; treat it as
   the public frontend for the signed APT repository rather than as a throwaway
-  marketing stub.
+  marketing stub. Keep it out of `.github/`: Dependabot stopped being able to
+  open npm pull requests for manifests under `.github/` in June 2026 (its
+  create-PR call is rejected as "invalid or unauthorized changes").
 - Retired files should be removed from the working tree rather than left behind
   as dead alternatives.
 
@@ -69,7 +71,7 @@ automation.
   ```bash
   make package
   ```
-- Build the GitHub Pages site locally after installing `.github/assets/website/`
+- Build the GitHub Pages site locally after installing `website/`
   dependencies:
   ```bash
   make website-build
@@ -264,11 +266,11 @@ automation.
   ```bash
   make package
   ```
-- If you change `.github/assets/website/` or GitHub Pages publishing behavior,
+- If you change `website/` or GitHub Pages publishing behavior,
   also run:
   ```bash
-  npm ci --prefix .github/assets/website
-  npm --prefix .github/assets/website run check
+  npm ci --prefix website
+  npm --prefix website run check
   make website-build
   ```
 - If you change `scripts/build-apt-repository.sh`, also run:

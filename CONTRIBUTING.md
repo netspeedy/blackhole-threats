@@ -67,7 +67,7 @@ Run the checks that match the files you changed:
 | Container behavior | `make docker-build` |
 | Debian packaging, install paths, service files | `make package` |
 | APT repository builder | `bash -n scripts/build-apt-repository.sh` |
-| GitHub Pages site | `npm ci --prefix .github/assets/website`, `npm --prefix .github/assets/website run check`, `make website-build` |
+| GitHub Pages site | `npm ci --prefix website`, `npm --prefix website run check`, `make website-build` |
 | Documentation only | Review links and examples for accuracy |
 
 If you cannot run a relevant check locally, say so in the pull request and
