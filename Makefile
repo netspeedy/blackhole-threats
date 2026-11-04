@@ -17,7 +17,7 @@ LDFLAGS ?= -s -w \
 	-X $(PKG)/internal/buildinfo.Commit=$(COMMIT) \
 	-X $(PKG)/internal/buildinfo.BuildDate=$(BUILD_DATE)
 
-.PHONY: fmt fmt-check vet test build build-cross docker-build website-build clean package
+.PHONY: fmt fmt-check vet test build build-cross docker-build website-build readme-hero clean package
 
 test:
 	$(GO) test ./...
@@ -57,6 +57,9 @@ website-build:
 	PUBLIC_BUILD_DATE=$(SITE_BUILD_DATE) \
 	PUBLIC_APT_FINGERPRINT='$(SITE_APT_FINGERPRINT)' \
 	npm --prefix $(WEBSITE_DIR) run build
+
+readme-hero:
+	python3 scripts/readme/build_readme_hero.py
 
 clean:
 	rm -rf _build dist
