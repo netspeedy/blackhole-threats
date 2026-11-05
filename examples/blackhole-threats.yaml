@@ -50,6 +50,9 @@ gobgp:
 feeds:
   - url: http://localhost:41412/security/blocklist
     community: 64520:1100
+    # Optional: for a list that can legitimately be empty. Without it, a
+    # feed that gives no prefixes counts as failed and keeps its old routes.
+    # allow_empty: true
   - url: https://team-cymru.org/Services/Bogons/fullbogons-ipv4.txt
     community: 64520:1101
   - url: https://team-cymru.org/Services/Bogons/fullbogons-ipv6.txt

@@ -69,6 +69,10 @@ func (c Community) Uint32() uint32 {
 type Feed struct {
 	URL       string    `yaml:"url"`
 	Community Community `yaml:"community"`
+	// AllowEmpty lets the feed give no prefixes without that counting as a failure, for a list
+	// that's legitimately empty at times. Without it, a feed that gives no prefixes keeps its
+	// community's previous routes.
+	AllowEmpty bool `yaml:"allow_empty"`
 }
 
 func (f Feed) String() string {

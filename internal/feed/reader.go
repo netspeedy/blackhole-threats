@@ -25,6 +25,12 @@ import (
 
 var ErrUnhandledScheme = errors.New("unhandled scheme")
 
+// ErrNoPrefixes means a feed was read without an error but gave nothing to announce: an empty
+// response, an HTML page, a JSON object wrapping the list, or only prefixes shorter than the
+// limits. Unless the feed sets allow_empty, that counts as a failure, so its community keeps the
+// routes it had rather than withdrawing them all because of a broken response.
+var ErrNoPrefixes = errors.New("no prefixes in feed")
+
 var defaultHTTPClient = &http.Client{Timeout: 30 * time.Second}
 
 type Reader struct {
@@ -50,30 +56,38 @@ type jsonFeedEntry struct {
 	Address string `json:"address"`
 }
 
-func (r Reader) ReadMany(ctx context.Context, sources ...string) ReadResult {
+// ReadMany reads every feed at the same time and summarises what they give together. A feed that
+// can't be read, or gives no prefixes and doesn't set AllowEmpty, is listed in FailedSources and
+// contributes nothing.
+func (r Reader) ReadMany(ctx context.Context, feeds ...config.Feed) ReadResult {
 	type result struct {
-		source   string
+		feed     config.Feed
 		prefixes []netip.Prefix
 		count    int
 		err      error
 	}
 
-	results := make(chan result, len(sources))
+	sources := make([]string, len(feeds))
+	results := make(chan result, len(feeds))
 	var wg sync.WaitGroup
-	wg.Add(len(sources))
+	wg.Add(len(feeds))
 
-	for _, source := range sources {
-		go func(source string) {
+	for i, feed := range feeds {
+		sources[i] = feed.URL
+		go func(feed config.Feed) {
 			defer wg.Done()
 
-			prefixes, count, err := r.readOne(ctx, source)
+			prefixes, count, err := r.readOne(ctx, feed.URL)
+			if errors.Is(err, ErrNoPrefixes) && feed.AllowEmpty {
+				err = nil
+			}
 			if err != nil {
-				results <- result{source: source, err: err}
+				results <- result{feed: feed, err: err}
 				return
 			}
 
-			results <- result{source: source, prefixes: prefixes, count: count}
-		}(source)
+			results <- result{feed: feed, prefixes: prefixes, count: count}
+		}(feed)
 	}
 
 	go func() {
@@ -85,18 +99,26 @@ func (r Reader) ReadMany(ctx context.Context, sources ...string) ReadResult {
 	var total, dropped int
 	var failed []string
 	for result := range results {
+		source := result.feed.URL
 		if result.err != nil {
-			log.WithField("source", result.source).WithError(result.err).Error("Failed to read threat feed")
-			failed = append(failed, result.source)
+			log.WithField("source", source).WithError(result.err).Error("Failed to read threat feed")
+			failed = append(failed, source)
 			continue
 		}
 
-		kept, short := r.dropShortPrefixes(result.prefixes, log.Fields{"source": result.source})
+		kept, short := r.dropShortPrefixes(result.prefixes, log.Fields{"source": source})
+		if len(kept) == 0 && short > 0 && !result.feed.AllowEmpty {
+			err := fmt.Errorf("%w: all %d were shorter than the limits", ErrNoPrefixes, short)
+			log.WithField("source", source).WithError(err).Error("Failed to read threat feed")
+			failed = append(failed, source)
+			continue
+		}
+
 		prefixes = append(prefixes, kept...)
 		total += result.count
 		dropped += short
 		log.WithFields(log.Fields{
-			"source":           result.source,
+			"source":           source,
 			"prefixes_read":    result.count,
 			"prefixes_dropped": short,
 		}).Info("Parsed threat feed")
@@ -157,10 +179,7 @@ func (r Reader) readOne(ctx context.Context, source string) ([]netip.Prefix, int
 		}
 		defer handle.Close()
 
-		if isJSONFeed(source, "") {
-			return readFromJSON(handle)
-		}
-		return readFromText(handle)
+		return readFeed(handle, "file", isJSONFeed(source, ""), "")
 	case "http", "https":
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, source, nil)
 		if err != nil {
@@ -177,13 +196,53 @@ func (r Reader) readOne(ctx context.Context, source string) ([]netip.Prefix, int
 			return nil, 0, fmt.Errorf("non-OK status code: %d", resp.StatusCode)
 		}
 
-		if isJSONFeed(source, resp.Header.Get("Content-Type")) {
-			return readFromJSON(resp.Body)
-		}
-		return readFromText(resp.Body)
+		contentType := resp.Header.Get("Content-Type")
+		return readFeed(resp.Body, "response", isJSONFeed(source, contentType), contentType)
 	default:
 		return nil, 0, fmt.Errorf("%w: %s", ErrUnhandledScheme, u.Scheme)
 	}
+}
+
+// readFeed reads r as JSON or text. If it gives no prefixes, the error wraps ErrNoPrefixes and
+// says what was there instead, so the log line shows why: what is either "file" or "response",
+// and contentType is the response's Content-Type, if any.
+func readFeed(r io.Reader, what string, asJSON bool, contentType string) ([]netip.Prefix, int, error) {
+	counted := &countingReader{r: r}
+
+	read := readFromText
+	if asJSON {
+		read = readFromJSON
+	}
+	prefixes, count, err := read(counted)
+	if err != nil || count > 0 {
+		return prefixes, count, err
+	}
+
+	var detail string
+	switch {
+	case counted.n == 0:
+		detail = fmt.Sprintf("the %s was empty", what)
+	case asJSON:
+		detail = fmt.Sprintf("the %s was %d bytes of JSON with no object holding an address in cidr, prefix, ip or address", what, counted.n)
+	default:
+		detail = fmt.Sprintf("the %s was %d bytes of text with no address or prefix on any line", what, counted.n)
+	}
+	if contentType != "" {
+		detail += fmt.Sprintf(" (Content-Type %q)", contentType)
+	}
+
+	return nil, 0, fmt.Errorf("%w: %s", ErrNoPrefixes, detail)
+}
+
+type countingReader struct {
+	r io.Reader
+	n int64
+}
+
+func (c *countingReader) Read(p []byte) (int, error) {
+	n, err := c.r.Read(p)
+	c.n += int64(n)
+	return n, err
 }
 
 func isJSONFeed(name, contentType string) bool {

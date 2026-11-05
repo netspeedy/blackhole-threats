@@ -45,8 +45,8 @@ you send it `SIGUSR1`. Each refresh does the same thing:
 3. It summarises each group: duplicates and prefixes inside a broader one go, and sibling
    prefixes merge into their parent. Two `/25`s that make up a `/24` become the `/24`.
 
-4. If any feed in a group failed, it keeps the routes that group had after the last refresh
-   instead of building new ones.
+4. If any feed in a group failed, including one that gave no prefixes at all, it keeps the routes
+   that group had after the last refresh instead of building new ones.
 
 5. It compares the new route table with what it's announcing, withdraws the routes that are
    gone or whose communities changed, and announces the new and changed ones. Unchanged routes

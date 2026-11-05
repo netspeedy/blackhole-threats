@@ -26,7 +26,10 @@ section of the configuration file changes these minimum lengths.
 .PP
 The daemon maintains the currently advertised route set across refresh cycles.
 If a feed refresh fails for a community, the last known-good routes for that
-community are kept until the next successful refresh.
+community are kept until the next successful refresh. A feed that yields no
+prefixes, such as an empty response or an HTML error page, counts as failed
+unless the feed sets
+.BR allow_empty .
 .PP
 Runtime logs are emitted to standard output in a structured logfmt-style
 format suitable for local reading, journald, and syslog-style collection.

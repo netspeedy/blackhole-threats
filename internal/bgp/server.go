@@ -34,7 +34,7 @@ type routeState struct {
 }
 
 type feedReader interface {
-	ReadMany(ctx context.Context, sources ...string) feed.ReadResult
+	ReadMany(ctx context.Context, feeds ...config.Feed) feed.ReadResult
 }
 
 // New starts the embedded GoBGP server with configSet. Feeds are read with limits applied, so
@@ -105,13 +105,13 @@ func (s *Server) Run(ctx context.Context, feeds []config.Feed, refreshInterval t
 }
 
 func (s *Server) buildRouteTable(ctx context.Context, feeds []config.Feed, previous map[string]routeState) map[string]routeState {
-	grouped := map[config.Community][]string{}
+	grouped := map[config.Community][]config.Feed{}
 	for _, source := range feeds {
 		community := source.Community
 		if community == 0 {
 			community = config.DefaultCommunity(s.asn)
 		}
-		grouped[community] = append(grouped[community], source.URL)
+		grouped[community] = append(grouped[community], source)
 	}
 
 	communities := make([]config.Community, 0, len(grouped))

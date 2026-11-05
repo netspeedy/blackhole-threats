@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -117,7 +118,7 @@ func TestReaderReadManyTracksFailedSources(t *testing.T) {
 		t.Fatalf("WriteFile() error = %v", err)
 	}
 
-	result := Reader{}.ReadMany(context.Background(), goodFeed, filepath.Join(dir, "missing.txt"))
+	result := Reader{}.ReadMany(context.Background(), config.Feed{URL: goodFeed}, config.Feed{URL: filepath.Join(dir, "missing.txt")})
 
 	if result.Count != 1 {
 		t.Fatalf("ReadMany() count = %d, want %d", result.Count, 1)
@@ -169,7 +170,7 @@ func TestReadManyDropsDefaultRoutes(t *testing.T) {
 	t.Parallel()
 
 	source := writeFeed(t, "feed.txt", "0.0.0.0/0\n198.51.100.0/24\n::/0\n2001:db8::/32\n")
-	result := Reader{}.ReadMany(context.Background(), source)
+	result := Reader{}.ReadMany(context.Background(), config.Feed{URL: source})
 
 	assertPrefixes(t, result.Prefixes, "198.51.100.0/24", "2001:db8::/32")
 	if result.Count != 4 || result.Dropped != 2 {
@@ -185,7 +186,7 @@ func TestReadManyDropsPrefixesShorterThanTheDefaults(t *testing.T) {
 
 	// One either side of each default: /7 and /8 for IPv4, /15 and /16 for IPv6.
 	source := writeFeed(t, "feed.txt", "10.0.0.0/7\n12.0.0.0/8\n2000::/15\n2400::/16\n")
-	result := Reader{}.ReadMany(context.Background(), source)
+	result := Reader{}.ReadMany(context.Background(), config.Feed{URL: source})
 
 	assertPrefixes(t, result.Prefixes, "12.0.0.0/8", "2400::/16")
 	if result.Dropped != 2 {
@@ -203,7 +204,7 @@ func TestReadManyAppliesConfiguredLimits(t *testing.T) {
   {"cidr":"2001:db8:10::/48"}
 ]`)
 	reader := Reader{Limits: config.Limits{MinIPv4PrefixLength: intPtr(24), MinIPv6PrefixLength: intPtr(48)}}
-	result := reader.ReadMany(context.Background(), source)
+	result := reader.ReadMany(context.Background(), config.Feed{URL: source})
 
 	assertPrefixes(t, result.Prefixes, "198.51.100.0/24", "2001:db8:10::/48")
 	if result.Count != 4 || result.Dropped != 2 {
@@ -218,7 +219,7 @@ func TestReadManyDoesNotSummariseBelowTheLimits(t *testing.T) {
 	t.Parallel()
 
 	source := writeFeed(t, "feed.txt", "10.0.0.0/8\n11.0.0.0/8\n2000::/16\n2001::/16\n")
-	result := Reader{}.ReadMany(context.Background(), source)
+	result := Reader{}.ReadMany(context.Background(), config.Feed{URL: source})
 	assertPrefixes(t, result.Prefixes, "10.0.0.0/8", "11.0.0.0/8", "2000::/16", "2001::/16")
 	if result.Dropped != 0 {
 		t.Fatalf("ReadMany() dropped = %d, want 0", result.Dropped)
@@ -226,7 +227,7 @@ func TestReadManyDoesNotSummariseBelowTheLimits(t *testing.T) {
 
 	custom := writeFeed(t, "custom.txt", "192.0.2.0/24\n192.0.3.0/24\n198.51.100.0/25\n198.51.100.128/25\n")
 	reader := Reader{Limits: config.Limits{MinIPv4PrefixLength: intPtr(24)}}
-	assertPrefixes(t, reader.ReadMany(context.Background(), custom).Prefixes, "192.0.2.0/24", "192.0.3.0/24", "198.51.100.0/24")
+	assertPrefixes(t, reader.ReadMany(context.Background(), config.Feed{URL: custom}).Prefixes, "192.0.2.0/24", "192.0.3.0/24", "198.51.100.0/24")
 }
 
 // The check after summarising is a backstop: summarising stops at the limits, so it shouldn't
@@ -259,7 +260,7 @@ func TestReadManyLogsEachDroppedPrefix(t *testing.T) {
 	})
 
 	source := writeFeed(t, "feed.txt", "0.0.0.0/0\n198.51.100.0/24\n")
-	Reader{}.ReadMany(context.Background(), source)
+	Reader{}.ReadMany(context.Background(), config.Feed{URL: source})
 
 	var warning, parsed map[string]any
 	for _, line := range bytes.Split(bytes.TrimSpace(buf.Bytes()), []byte("\n")) {
@@ -283,6 +284,116 @@ func TestReadManyLogsEachDroppedPrefix(t *testing.T) {
 	}
 	if parsed == nil || parsed["prefixes_read"] != float64(2) || parsed["prefixes_dropped"] != float64(1) {
 		t.Fatalf("Parsed threat feed = %v, want prefixes_read 2 and prefixes_dropped 1", parsed)
+	}
+}
+
+func TestReadOneFailsAnEmptyResponse(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+	}))
+	defer srv.Close()
+
+	_, _, err := Reader{Client: srv.Client()}.readOne(context.Background(), srv.URL+"/drop.txt")
+	assertNoPrefixes(t, err, "the response was empty")
+}
+
+func TestReadOneFailsAnEmptyFile(t *testing.T) {
+	t.Parallel()
+
+	source := writeFeed(t, "feed.txt", "")
+	_, _, err := Reader{}.readOne(context.Background(), source)
+	assertNoPrefixes(t, err, "the file was empty")
+}
+
+// A provider's error or login page served with 200 OK reads as text with no prefixes in it.
+func TestReadOneFailsAnHTMLPage(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = io.WriteString(w, "<!doctype html>\n<html><head><title>Service unavailable</title></head>\n<body><p>Try again later.</p></body></html>\n")
+	}))
+	defer srv.Close()
+
+	_, _, err := Reader{Client: srv.Client()}.readOne(context.Background(), srv.URL+"/drop.txt")
+	assertNoPrefixes(t, err, `bytes of text with no address or prefix on any line (Content-Type "text/html; charset=utf-8")`)
+}
+
+// A JSON object that wraps the list reads as one object with none of the address fields.
+func TestReadOneFailsAJSONObjectWrapper(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"data":[{"cidr":"203.0.113.0/24"},{"cidr":"2001:db8::/32"}]}`)
+	}))
+	defer srv.Close()
+
+	_, _, err := Reader{Client: srv.Client()}.readOne(context.Background(), srv.URL+"/drop")
+	assertNoPrefixes(t, err, "bytes of JSON with no object holding an address in cidr, prefix, ip or address")
+}
+
+func TestReadManyFailsAFeedWithNoPrefixes(t *testing.T) {
+	t.Parallel()
+
+	good := writeFeed(t, "good.txt", "198.51.100.0/24\n")
+	empty := writeFeed(t, "empty.txt", "# nothing listed today\n")
+	result := Reader{}.ReadMany(context.Background(), config.Feed{URL: good}, config.Feed{URL: empty})
+
+	if !slices.Equal(result.FailedSources, []string{empty}) {
+		t.Fatalf("ReadMany() failed sources = %v, want [%s]", result.FailedSources, empty)
+	}
+}
+
+// Every line was shorter than the limits, so nothing is left to announce. That's a broken feed
+// too, not an empty one.
+func TestReadManyFailsAFeedWhoseEveryPrefixIsDropped(t *testing.T) {
+	t.Parallel()
+
+	source := writeFeed(t, "feed.txt", "0.0.0.0/0\n::/0\n")
+	result := Reader{}.ReadMany(context.Background(), config.Feed{URL: source})
+	if !slices.Equal(result.FailedSources, []string{source}) {
+		t.Fatalf("ReadMany() failed sources = %v, want [%s]", result.FailedSources, source)
+	}
+
+	allowed := Reader{}.ReadMany(context.Background(), config.Feed{URL: source, AllowEmpty: true})
+	if len(allowed.FailedSources) != 0 || len(allowed.Prefixes) != 0 || allowed.Dropped != 2 {
+		t.Fatalf("ReadMany() with allow_empty = %+v, want no failures, no prefixes and 2 dropped", allowed)
+	}
+}
+
+func TestReadManyAcceptsAnEmptyFeedThatAllowsIt(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+	}))
+	defer srv.Close()
+
+	file := writeFeed(t, "feed.txt", "# nothing listed today\n")
+	result := Reader{Client: srv.Client()}.ReadMany(context.Background(),
+		config.Feed{URL: srv.URL + "/drop.txt", AllowEmpty: true},
+		config.Feed{URL: file, AllowEmpty: true},
+	)
+
+	if len(result.FailedSources) != 0 {
+		t.Fatalf("ReadMany() failed sources = %v, want none", result.FailedSources)
+	}
+	if result.Count != 0 || len(result.Prefixes) != 0 {
+		t.Fatalf("ReadMany() count = %d, prefixes = %v, want nothing", result.Count, prefixesToStrings(result.Prefixes))
+	}
+}
+
+func assertNoPrefixes(t *testing.T, err error, detail string) {
+	t.Helper()
+
+	if !errors.Is(err, ErrNoPrefixes) {
+		t.Fatalf("readOne() error = %v, want ErrNoPrefixes", err)
+	}
+	if !strings.Contains(err.Error(), detail) {
+		t.Fatalf("readOne() error = %q, want it to say %q", err, detail)
 	}
 }
 

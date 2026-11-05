@@ -57,11 +57,19 @@ also means stale routes stay announced for as long as the feed stays broken.
 
 ## A feed reads zero prefixes
 
-If `Parsed threat feed` shows `prefixes_read=0` and the feed isn't really empty, the response
-probably isn't in a shape blackhole-threats reads. Common causes are an HTML page served with a
-200, a JSON object that wraps the list in another key, or a text format with something attached
-to each address, such as `ip=192.0.2.1`. [Feed formats](/blackhole-threats/reference/feed-formats/)
-has the exact rules. A zero read counts as success, so the community's routes are withdrawn.
+A feed that gives no prefixes logs `Failed to read threat feed` with an error starting
+`no prefixes in feed`, and its community keeps the routes from the last good refresh. The rest of
+the error says what was read instead:
+
+| The error ends with | Usual cause |
+| --- | --- |
+| `the response was empty` or `the file was empty` | The provider served nothing, or the file was emptied or truncated |
+| `bytes of text with no address or prefix on any line` | An HTML page served with a 200, which the `Content-Type` in the error usually shows, or a text format with something attached to each address, such as `ip=192.0.2.1` |
+| `bytes of JSON with no object holding an address in cidr, prefix, ip or address` | A JSON object that wraps the list in another key, or entries that use other field names |
+| `all N were shorter than the limits` | Every prefix in the feed was broader than the [`limits`](/blackhole-threats/reference/configuration/#limits) allow, such as `0.0.0.0/0` |
+
+[Feed formats](/blackhole-threats/reference/feed-formats/) has the exact rules. If the feed really
+can be empty, set `allow_empty: true` on it, and an empty read then withdraws its routes instead.
 
 ## A reload didn't apply my change
 

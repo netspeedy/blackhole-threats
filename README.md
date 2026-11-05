@@ -186,7 +186,9 @@ the first IPv4 or IPv6 prefix on each line is used, and a bare IP address
 becomes a host prefix. JSON arrays, JSONL and NDJSON are read for the common fields
 `cidr`, `prefix`, `ip` and `address`. Feeds that share a community are grouped,
 summarised and published together, and a failure in any of them carries that
-community's last good routes forward. A prefix shorter than `/8` for IPv4 or
+community's last good routes forward. A feed that gives no prefixes, such as
+an empty response or an HTML error page served with a 200, counts as failed
+unless it sets `allow_empty: true`. A prefix shorter than `/8` for IPv4 or
 `/16` for IPv6, such as a stray `0.0.0.0/0`, is dropped with a warning rather
 than announced, and summarising never merges past those limits. [Feeds and communities](https://netspeedy.github.io/blackhole-threats/how-it-works/feeds/)
 and [Feed formats](https://netspeedy.github.io/blackhole-threats/reference/feed-formats/) have the parsing, grouping,

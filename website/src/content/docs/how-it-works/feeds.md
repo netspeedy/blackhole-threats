@@ -43,11 +43,20 @@ times out, the status isn't 200, a text line is longer than 1 MiB, or a JSON fee
 JSON or holds something other than objects. Each failure logs `Failed to read threat feed` with
 the feed and the error.
 
-A feed that's read but has nothing usable in it isn't a failure. An empty file, an HTML error
-page served with a 200, or a JSON object that wraps its list in another key reads as zero
-prefixes, or close to it, and the group is rebuilt without them. If that's the group's only feed, every route it
-had is withdrawn. Watch `prefixes_read` on `Parsed threat feed` for a source that suddenly drops
-to 0.
+A feed that's read but gives no prefixes fails too. An empty file or response, an HTML error page
+served with a 200, a JSON object that wraps its list in another key, and a feed whose every prefix
+is shorter than the limits all give nothing to announce, and `Failed to read threat feed` says
+which it was, such as `error="no prefixes in feed: the response was empty"`. Counting that as a
+failure keeps the community's routes announced, rather than withdrawing every one of them because
+a provider served a broken page.
+
+If a feed can legitimately be empty, such as a local list you clear when there's nothing to
+block, set `allow_empty: true` on it. Then a feed with no prefixes succeeds, and its routes are
+withdrawn as they would be for any feed that stopped listing them. Feeds added with `-feed` can't
+set it.
+
+A feed that gives a few prefixes where it used to give thousands still succeeds, so watch
+`prefixes_read` on `Parsed threat feed` for a source that suddenly drops.
 
 ## Short prefixes
 
@@ -60,7 +69,9 @@ A prefix shorter than its limit is dropped as soon as the feed is read. Each one
 `Dropped prefix shorter than the minimum length` with the feed, the prefix and the limit, and the
 count goes into `prefixes_dropped` on `Parsed threat feed` and `Prepared community routes`. The
 feed itself isn't treated as failed: the rest of its prefixes are used as normal, because failing
-it would keep its old routes announced for as long as that one line stayed in the feed.
+it would keep its old routes announced for as long as that one line stayed in the feed. The
+exception is a feed with nothing left once they're dropped, which
+[fails like any other feed with no prefixes](#what-counts-as-a-failure).
 
 Lists of unallocated address space, such as full bogon lists, describe it in big blocks, so
 they're the feeds most likely to hit the limits. Expect a warning for each such line on every
