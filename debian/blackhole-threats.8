@@ -105,6 +105,11 @@ Packaged reference configuration example.
 Trigger an immediate feed refresh without waiting for the next scheduled
 refresh interval.
 .TP
+.B SIGHUP
+The same as
+.BR SIGUSR1 .
+It does not reload the configuration file; that takes a restart.
+.TP
 .B SIGINT
 Request a graceful shutdown.
 .TP

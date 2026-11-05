@@ -74,7 +74,7 @@ can be empty, set `allow_empty: true` on it, and an empty read then withdraws it
 
 ## A reload didn't apply my change
 
-`SIGUSR1` and `systemctl reload` only re-read the feeds. A change to the YAML file, to
+`SIGUSR1`, `SIGHUP` and `systemctl reload` only re-read the feeds. A change to the YAML file, to
 `/etc/default/blackhole-threats` or to container environment variables needs a restart.
 
 ## Routes don't appear on the router

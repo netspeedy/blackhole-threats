@@ -165,5 +165,5 @@ reads every feed, so it shows whether the feeds are reachable and how many route
 the copy you test with `-once` a `port` other than 179 if the live daemon is running on the same
 host, or the two will fight over the port.
 
-The daemon only reads the file at startup, so restart it to apply a change. `SIGUSR1` and
-`systemctl reload` re-read the feeds, not the config.
+The daemon only reads the file at startup, so restart it to apply a change. `SIGUSR1`,
+`SIGHUP` and `systemctl reload` re-read the feeds, not the config.

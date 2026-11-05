@@ -42,7 +42,7 @@ After each refresh the daemon waits for the refresh interval, two hours unless `
 says otherwise, and runs the next one. The wait starts when a refresh finishes, so the interval is
 the gap between refreshes rather than a fixed schedule.
 
-`SIGUSR1` cuts the wait short: the daemon logs `Refresh signal received` and refreshes now, and
+`SIGUSR1`, or `SIGHUP`, cuts the wait short: the daemon logs `Refresh signal received` and refreshes now, and
 the next interval counts from the end of that refresh. A signal re-reads the feeds; it doesn't
 reload the YAML file or the flags, which needs a restart.
 

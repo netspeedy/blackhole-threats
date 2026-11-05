@@ -53,7 +53,7 @@ flag is on when it's given; `-once=false` turns it off again. Without `-conf` th
 <FlagTable flags={running} />
 
 With neither `-check-config` nor `-once` the daemon runs until it's stopped, refreshing on the
-timer and on `SIGUSR1`. `-check-config` wins if you give both.
+timer and on `SIGUSR1` or `SIGHUP`. `-check-config` wins if you give both.
 
 ## Logging
 

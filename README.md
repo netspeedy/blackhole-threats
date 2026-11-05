@@ -177,8 +177,9 @@ kill -USR1 <pid>
 The daemon refreshes every two hours unless you set `-refresh-rate`. `-feed`
 adds a feed from the command line and can be repeated. `SIGUSR1`, or
 `systemctl reload blackhole-threats` on a packaged install, triggers an
-immediate feed refresh and route reconciliation. Neither reloads the YAML or the
-flags, so restart the process after a configuration change. Logs are
+immediate feed refresh and route reconciliation, and `SIGHUP` does the same.
+None of them reloads the YAML or the flags, so restart the process after a
+configuration change. Logs are
 logfmt-style by default, which suits Docker, journald and syslog;
 `-log-format json` switches to newline-delimited JSON.
 

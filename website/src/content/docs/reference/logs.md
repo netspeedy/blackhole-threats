@@ -60,8 +60,8 @@ defaults of 8 and 16.
 | `Keeping previous community routes after feed errors` | warning | `community`, `feed_count`, `failed_feed_count`, `failed_feeds`, `carried_forward` |
 | `Refresh completed` | info | `announced`, `withdrawn`, `active_routes`, `duration_ms` |
 
-`Refresh signal received` comes before a refresh that `SIGUSR1` started, with
-`signal="user defined signal 1"`. Each feed logs either `Parsed threat feed` or
+`Refresh signal received` comes before a refresh that a signal started, with
+`signal="user defined signal 1"` for `SIGUSR1` or `signal=hangup` for `SIGHUP`. Each feed logs either `Parsed threat feed` or
 `Failed to read threat feed`, and each community then logs either `Prepared community routes`
 or `Keeping previous community routes after feed errors`.
 

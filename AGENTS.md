@@ -250,8 +250,8 @@ automation.
   daemon is PID 1 and `docker kill --signal=SIGUSR1` refreshes it while
   `docker stop` shuts it down cleanly. It used to run under s6-overlay's
   `/init`, where SIGUSR1 reached s6-svscan and stopped the whole container.
-  Don't put an init back in front of the daemon unless it forwards SIGUSR1, and
-  keep the SIGUSR1 check in the container workflow's smoke test.
+  Don't put an init back in front of the daemon unless it forwards SIGUSR1 and
+  SIGHUP, and keep the signal checks in the container workflow's smoke test.
   The scheduled refresh workflow only refreshes the Go build image pin.
 - Container bootstrap behavior should continue to create or expose the sample
   config through `/config` as documented and smoke-tested by CI.

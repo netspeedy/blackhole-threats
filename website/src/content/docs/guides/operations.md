@@ -26,7 +26,7 @@ There are two ways to make the daemon act now, and they do different things:
 
 | | Refresh | Restart |
 | --- | --- | --- |
-| How | `SIGUSR1`: `systemctl reload blackhole-threats`, or `docker kill --signal=SIGUSR1` | `systemctl restart blackhole-threats`, `docker restart` |
+| How | `SIGUSR1` or `SIGHUP`: `systemctl reload blackhole-threats`, or `docker kill --signal=SIGUSR1` | `systemctl restart blackhole-threats`, `docker restart` |
 | Reads the feeds again | Yes | Yes, on the first refresh |
 | Reads the YAML file and flags again | No | Yes |
 | BGP sessions | Stay up | Close and reconnect; routers drop the routes until the first refresh |
