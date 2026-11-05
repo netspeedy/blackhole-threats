@@ -113,6 +113,7 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 22
+          check-latest: true
           cache: npm
           cache-dependency-path: ${{ env.WEBSITE_DIR }}/package-lock.json
 
