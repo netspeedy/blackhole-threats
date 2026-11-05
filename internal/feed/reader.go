@@ -26,8 +26,8 @@ import (
 var ErrUnhandledScheme = errors.New("unhandled scheme")
 
 // ErrNoPrefixes means a feed was read without an error but gave nothing to announce: an empty
-// response, an HTML page, a JSON object wrapping the list, or only prefixes shorter than the
-// limits. Unless the feed sets allow_empty, that counts as a failure, so its community keeps the
+// response, an HTML page, an empty JSON array, a JSON object wrapping the list, or only prefixes
+// shorter than the limits. Unless the feed sets allow_empty, that counts as a failure, so its community keeps the
 // routes it had rather than withdrawing them all because of a broken response.
 var ErrNoPrefixes = errors.New("no prefixes in feed")
 
@@ -209,19 +209,24 @@ func (r Reader) readOne(ctx context.Context, source string) ([]netip.Prefix, int
 func readFeed(r io.Reader, what string, asJSON bool, contentType string) ([]netip.Prefix, int, error) {
 	counted := &countingReader{r: r}
 
-	read := readFromText
+	var prefixes []netip.Prefix
+	var shape jsonShape
+	var err error
 	if asJSON {
-		read = readFromJSON
+		prefixes, shape, err = readFromJSON(counted)
+	} else {
+		prefixes, _, err = readFromText(counted)
 	}
-	prefixes, count, err := read(counted)
-	if err != nil || count > 0 {
-		return prefixes, count, err
+	if err != nil || len(prefixes) > 0 {
+		return prefixes, len(prefixes), err
 	}
 
 	var detail string
 	switch {
 	case counted.n == 0:
 		detail = fmt.Sprintf("the %s was empty", what)
+	case asJSON && shape.array && shape.entries == 0:
+		detail = fmt.Sprintf("the %s was an empty JSON array", what)
 	case asJSON:
 		detail = fmt.Sprintf("the %s was %d bytes of JSON with no object holding an address in cidr, prefix, ip or address", what, counted.n)
 	default:
@@ -288,21 +293,33 @@ func readFromText(r io.Reader) ([]netip.Prefix, int, error) {
 	return prefixes, len(prefixes), nil
 }
 
-func readFromJSON(r io.Reader) ([]netip.Prefix, int, error) {
+// jsonShape is what a JSON feed held, so that one giving no prefixes can be told apart: an empty
+// array is a list with nothing in it, where a wrapper object or entries with other field names
+// mean the format isn't one the reader knows.
+type jsonShape struct {
+	// array is true when the feed was a JSON array rather than a stream of values.
+	array bool
+	// entries is how many values the array or the stream held.
+	entries int
+}
+
+func readFromJSON(r io.Reader) ([]netip.Prefix, jsonShape, error) {
 	buffered := bufio.NewReader(r)
 	lead, err := peekJSONLead(buffered)
 	if err == io.EOF {
-		return nil, 0, nil
+		return nil, jsonShape{}, nil
 	}
 	if err != nil {
-		return nil, 0, err
+		return nil, jsonShape{}, err
 	}
 
 	if lead == '[' {
-		return readFromJSONArray(buffered)
+		prefixes, entries, err := readFromJSONArray(buffered)
+		return prefixes, jsonShape{array: true, entries: entries}, err
 	}
 
-	return readFromJSONStream(buffered)
+	prefixes, entries, err := readFromJSONStream(buffered)
+	return prefixes, jsonShape{entries: entries}, err
 }
 
 func peekJSONLead(r *bufio.Reader) (byte, error) {
@@ -323,9 +340,12 @@ func peekJSONLead(r *bufio.Reader) (byte, error) {
 	}
 }
 
+// readFromJSONStream reads a stream of JSON objects, such as JSON Lines, and returns the prefixes
+// in them and how many objects there were.
 func readFromJSONStream(r io.Reader) ([]netip.Prefix, int, error) {
 	decoder := json.NewDecoder(r)
 	var prefixes []netip.Prefix
+	entries := 0
 
 	for {
 		var entry jsonFeedEntry
@@ -336,6 +356,7 @@ func readFromJSONStream(r io.Reader) ([]netip.Prefix, int, error) {
 		if err != nil {
 			return nil, 0, err
 		}
+		entries++
 
 		prefix, ok := prefixFromJSONEntry(entry)
 		if !ok {
@@ -344,9 +365,11 @@ func readFromJSONStream(r io.Reader) ([]netip.Prefix, int, error) {
 		prefixes = append(prefixes, prefix)
 	}
 
-	return prefixes, len(prefixes), nil
+	return prefixes, entries, nil
 }
 
+// readFromJSONArray reads a JSON array of objects and returns the prefixes in them and how many
+// objects there were.
 func readFromJSONArray(r io.Reader) ([]netip.Prefix, int, error) {
 	decoder := json.NewDecoder(r)
 	token, err := decoder.Token()
@@ -360,11 +383,13 @@ func readFromJSONArray(r io.Reader) ([]netip.Prefix, int, error) {
 	}
 
 	var prefixes []netip.Prefix
+	entries := 0
 	for decoder.More() {
 		var entry jsonFeedEntry
 		if err := decoder.Decode(&entry); err != nil {
 			return nil, 0, err
 		}
+		entries++
 
 		prefix, ok := prefixFromJSONEntry(entry)
 		if !ok {
@@ -377,7 +402,7 @@ func readFromJSONArray(r io.Reader) ([]netip.Prefix, int, error) {
 		return nil, 0, err
 	}
 
-	return prefixes, len(prefixes), nil
+	return prefixes, entries, nil
 }
 
 func extractPrefix(line string) (netip.Prefix, bool) {
