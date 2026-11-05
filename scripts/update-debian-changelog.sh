@@ -16,8 +16,10 @@ package_name="${first_line%% *}"
 current_version="$(printf '%s\n' "${first_line}" | sed -n 's/^[^(]*(\([^)]*\)).*/\1/p')"
 target_version="${release_tag#v}-1"
 urgency="$(printf '%s\n' "${first_line}" | sed -n 's/.*urgency=\([^ ]*\).*/\1/p')"
+# sed stops at the first trailer itself. Piping every trailer into head -n1 fails under pipefail
+# once there are more than a pipe's buffer of them, because sed is killed by SIGPIPE.
 maintainer="$(
-  sed -n 's/^ -- \(.*\)  [A-Z][a-z][a-z], .*/\1/p' debian/changelog | head -n1
+  sed -n -e '/^ -- .*  [A-Z][a-z][a-z], /{' -e 's/^ -- \(.*\)  [A-Z][a-z][a-z], .*/\1/p' -e 'q' -e '}' debian/changelog
 )"
 
 if [ -z "${package_name}" ] || [ "${package_name}" = "${first_line}" ]; then

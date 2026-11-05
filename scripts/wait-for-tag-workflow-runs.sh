@@ -24,8 +24,7 @@ find_run_id() {
     | jq -r \
       --arg tag_name "${tag_name}" \
       --arg head_sha "${head_sha}" \
-      '.[] | select(.event == "push" and .headBranch == $tag_name and .headSha == $head_sha) | .databaseId' \
-    | head -n1
+      'map(select(.event == "push" and .headBranch == $tag_name and .headSha == $head_sha)) | first | .databaseId // empty'
 }
 
 for workflow in "$@"; do
