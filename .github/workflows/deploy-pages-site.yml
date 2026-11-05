@@ -157,6 +157,10 @@ jobs:
           npm ci --prefix "${WEBSITE_DIR}"
           SITE_METADATA_FILE="${metadata}" make website-build WEBSITE_DIR="${WEBSITE_DIR}"
           make website-check WEBSITE_DIR="${WEBSITE_DIR}"
+          # The snapshot holds the previous site as well as the APT repository. Keep only the
+          # repository and the metadata, so files the new site no longer has aren't left published.
+          find site -mindepth 1 -maxdepth 1 ! -name dists ! -name pool \
+            ! -name 'blackhole-threats-archive-keyring.*' ! -name website-metadata.json -exec rm -rf {} +
           cp -a "${WEBSITE_DIR}/dist/." site/
           cp "${metadata}" site/website-metadata.json
           touch site/.nojekyll
