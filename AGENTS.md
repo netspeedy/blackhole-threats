@@ -299,7 +299,9 @@ automation.
 - Dependabot auto-merge should only act after `Build and Validate` succeeds for
   the PR head revision, and it should preserve the Dependabot pull request
   title as the squash commit subject so existing `deps:` / `container:` release
-  automation still works after merge.
+  automation still works after merge. The pin refresh is rebase-merged instead:
+  its one commit is authored as `netspeedybot` with the PR title as its subject,
+  and a squash would replace that author with `github-actions[bot]`.
 - Dependabot version-update automation intentionally does not semver-filter PRs:
   patch, minor, and major updates are all eligible to merge after successful
   validation, and the repo keeps enough Dependabot PR capacity that a failing

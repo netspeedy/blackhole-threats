@@ -48,6 +48,10 @@ jobs:
           add-paths: |
             Dockerfile
           branch: automation/refresh-build-and-runtime-pins
+          # The sweep rebase-merges this, so main keeps netspeedybot as the author and
+          # the bots-only release check recognises it.
+          author: netspeedybot <45371234+netspeedybot@users.noreply.github.com>
+          committer: netspeedybot <45371234+netspeedybot@users.noreply.github.com>
           commit-message: "container: refresh build and runtime pins"
           title: "container: refresh build and runtime pins"
           body: |
