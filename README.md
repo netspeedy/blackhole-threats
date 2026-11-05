@@ -205,8 +205,9 @@ Longer guides live under [`docs/`](docs/README.md):
 
 Every push to `main` runs Build and Validate, and once it passes the release
 workflow cuts the next release candidate from the merged commit history and runs
-the prerelease publish path. Promoting a candidate to stable is a separate,
-explicit step through the Promote Release Candidate workflow. Pull requests only
+the prerelease publish path. When that passes, the same run promotes the
+candidate to the stable release, which publishes the APT repository and the
+`latest` image. Pull requests only
 validate: they build, test and package, but never see signing or publish
 credentials.
 

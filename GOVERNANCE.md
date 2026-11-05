@@ -36,12 +36,12 @@ project away from its route-server purpose.
 
 ## Release Authority
 
-The default branch is expected to stay release-candidate-ready. Automated
-release candidates may be cut after validation succeeds on `main`; stable
-promotion remains an explicit maintainer action.
+The default branch is expected to stay releasable. Once validation succeeds on
+`main`, the release automation cuts a release candidate, checks its publish
+path and promotes it to stable on its own.
 
-Only maintainers should perform release recovery, stable promotion, signing key
-management, or publication changes.
+Only maintainers should perform release recovery, signing key management, or
+publication changes.
 
 ## Funding And Independence
 

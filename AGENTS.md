@@ -124,9 +124,11 @@ automation.
   trio, but do not attach maintainer-oriented byproducts such as `-dbgsym`,
   `.buildinfo`, `.changes`, or a duplicate `release-notes.md` asset.
 - `main` auto-cuts release candidates after `Build and Validate` succeeds and
-  validates the prerelease asset and container publish paths. Stable promotion
-  is an explicit operator step through the `Promote Release Candidate` workflow.
-  Keep `main` releasable enough for that automation.
+  validates the prerelease asset and container publish paths, then promotes the
+  candidate to stable on the same commit and waits for the stable publish
+  workflows (release assets, container image, APT repository). Nobody presses a
+  button: a merged release-bearing change ships on its own, so keep `main`
+  releasable. The `Promote Release Candidate` workflow is only for recovery.
 - The checked-in `debian/changelog` must track the latest stable package
   version present on `main`. Automated release runs update it with
   `scripts/update-debian-changelog.sh` on a `chore(release): update Debian
@@ -172,11 +174,7 @@ automation.
   rebuilding unsigned repository metadata.
 - Documentation-only, README-only, architecture-only, website-only, and
   Pages-only changes are non-release-bearing: they never start a release on
-  their own, and they refresh the GitHub Pages site from `main`. While
-  release-bearing commits are waiting for stable promotion, though, every
-  validated push to `main` tags the next release candidate, docs-only pushes
-  included, because `scripts/next-release.sh` counts from the last stable tag.
-  That's expected.
+  their own, and they refresh the GitHub Pages site from `main`.
 - `scripts/build-apt-repository.sh` is expected to keep publishing both binary
   and source package indexes. Do not regress `deb-src` support.
 - Keep Debian changelog entries factual, operator-facing, and suitable for an
@@ -318,17 +316,12 @@ automation.
   `v*-rc.*` tag from merged commit history and run the prerelease publish path.
   Do not merge partial work to `main` that should not become a published
   prerelease.
-- Unless the user explicitly asks for a stable release or promotion, default to
-  the prerelease path first. If the user asks to "release", "tag", "ship", or
-  "push a release" without clarifying stability, interpret that as "create or
-  verify the next prerelease"; treat stable promotion as a separate explicit
-  operator action.
 - Docs-only, README-only, website-only, or CI-only landing-page updates should
   use the normal `main` push path and the Pages-site deploy workflow; do not
   cut a release tag just to refresh the public website.
 - Do not hand-push routine `v*` or `v*-rc.*` tags. Automated tagging from
-  `main` is the normal path; manual promotion or manual tags should be reserved
-  for explicit recovery or operator-directed exceptions.
+  `main` is the normal path, and it promotes to stable itself; the manual
+  promotion workflow and manual tags are for recovering from a failed run.
 - Pull requests should explain:
   - the operational reason for the change
   - any routing, packaging, or upgrade impact

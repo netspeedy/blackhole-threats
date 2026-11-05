@@ -18,7 +18,8 @@ release-candidate path automatically:
 1. compute the next semantic version
 2. create a prerelease tag `v<major>.<minor>.<patch>-rc.<n>`
 3. validate prerelease asset and container publication
-4. leave stable promotion to an explicit maintainer action
+4. promote the candidate to the stable tag on the same commit and wait for the
+   stable publish workflows, including the APT repository
 
 ## Workflow Map
 
@@ -56,7 +57,10 @@ Behavior:
 - dispatches `container-image.yml` and `release-assets.yml` from the current
   default branch with the target tag passed explicitly
 - waits for those prerelease publish paths to succeed
-- stops before stable promotion
+- tags the same commit as the stable release, which needs
+  `RELEASE_AUTOMATION_TOKEN` so the tag starts its publish workflows, and waits
+  for `release-assets.yml`, `container-image.yml` and
+  `publish-apt-repository.yml` to finish for it
 
 Recovery path:
 
@@ -66,8 +70,9 @@ Recovery path:
 
 Important consequences:
 
-- stable tags are created by the `Promote Release Candidate` workflow after a
-  maintainer chooses the RC to promote
+- stable tags are created by the release automation once the candidate's
+  publish path passes; the `Promote Release Candidate` workflow is only for
+  recovering from a run that failed partway
 - release candidates and their matching stable releases point at the same
   commit, so the checked-in changelog records the stable package version while
   RC package builds rewrite their build-local changelog version to `~rc.N`
@@ -204,14 +209,14 @@ Current behavior:
 - the release workflows publish directly to the tagged GitHub Release rather
   than creating a temporary draft shell, and they clean up stale orphan
   `untagged-*` drafts for the same tag before publishing
-- the repo-scoped `GITHUB_TOKEN` is also the default release-tag credential,
-  and an optional `RELEASE_AUTOMATION_TOKEN` can be added if release-bearing
-  commits under `.github/workflows/` need the extra workflow permission that
-  GitHub requires for automated tag pushes
+- release tags are pushed with `RELEASE_AUTOMATION_TOKEN`, the organisation
+  secret, because a tag pushed with the repo-scoped `GITHUB_TOKEN` doesn't start
+  the workflows that publish it, and a release-bearing commit under
+  `.github/workflows/` needs the workflow permission that token carries
 
-Operationally, this means passing dependency updates can flow from PR to a
-published RC without manual intervention. Stable publication stays a deliberate
-maintainer action.
+Operationally, this means passing dependency updates flow from PR to a
+published stable release, APT package and `latest` image without manual
+intervention.
 
 ## Trust Boundaries
 
@@ -237,7 +242,8 @@ Automation is the default, but a maintainer still steps in when:
 - prerelease asset publication fails
 - container publication fails
 - APT signing or Pages publication fails
-- a stable promotion is needed via the manual promotion workflow
+- the automatic promotion failed partway, so the `Promote Release Candidate`
+  workflow is needed to finish it
 - a dependency update stays red and should not merge automatically
 
 ## What Does Not Create A Release
