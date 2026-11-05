@@ -37,8 +37,9 @@ project away from its route-server purpose.
 ## Release Authority
 
 The default branch is expected to stay releasable. Once validation succeeds on
-`main`, the release automation cuts a release candidate, checks its publish
-path and promotes it to stable on its own.
+`main`, the release automation cuts a release candidate and checks its publish
+path. It promotes automated dependency updates to stable on its own; a
+maintainer promotes a release that includes changes people merged.
 
 Only maintainers should perform release recovery, signing key management, or
 publication changes.

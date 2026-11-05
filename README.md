@@ -205,9 +205,12 @@ Longer guides live under [`docs/`](docs/README.md):
 
 Every push to `main` runs Build and Validate, and once it passes the release
 workflow cuts the next release candidate from the merged commit history and runs
-the prerelease publish path. When that passes, the same run promotes the
-candidate to the stable release, which publishes the APT repository and the
-`latest` image. Pull requests only
+the prerelease publish path. When that passes and the release only holds
+automated updates from Dependabot, Renovate or this repository's workflows, the
+same run promotes the candidate to the stable release, which publishes the APT
+repository and the `latest` image. A release-bearing change a person merged
+waits at the candidate until someone runs the Promote Release Candidate
+workflow. Pull requests only
 validate: they build, test and package, but never see signing or publish
 credentials.
 

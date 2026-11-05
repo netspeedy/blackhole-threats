@@ -124,11 +124,13 @@ automation.
   trio, but do not attach maintainer-oriented byproducts such as `-dbgsym`,
   `.buildinfo`, `.changes`, or a duplicate `release-notes.md` asset.
 - `main` auto-cuts release candidates after `Build and Validate` succeeds and
-  validates the prerelease asset and container publish paths, then promotes the
-  candidate to stable on the same commit and waits for the stable publish
-  workflows (release assets, container image, APT repository). Nobody presses a
-  button: a merged release-bearing change ships on its own, so keep `main`
-  releasable. The `Promote Release Candidate` workflow is only for recovery.
+  validates the prerelease asset and container publish paths. If every
+  release-bearing commit since the last stable release came from Dependabot,
+  Renovate or this repository's workflows (`scripts/automated-only.sh`), it
+  then promotes the candidate to stable on the same commit and waits for the
+  stable publish workflows (release assets, container image, APT repository).
+  A release-bearing change a person merged waits at the candidate until
+  someone runs `Promote Release Candidate`, so keep `main` releasable.
 - The checked-in `debian/changelog` must track the latest stable package
   version present on `main`. Automated release runs update it with
   `scripts/update-debian-changelog.sh` on a `chore(release): update Debian
@@ -320,8 +322,8 @@ automation.
   use the normal `main` push path and the Pages-site deploy workflow; do not
   cut a release tag just to refresh the public website.
 - Do not hand-push routine `v*` or `v*-rc.*` tags. Automated tagging from
-  `main` is the normal path, and it promotes to stable itself; the manual
-  promotion workflow and manual tags are for recovering from a failed run.
+  `main` is the normal path. Promote a person's change with the
+  `Promote Release Candidate` workflow, never with a hand-pushed tag.
 - Pull requests should explain:
   - the operational reason for the change
   - any routing, packaging, or upgrade impact

@@ -18,8 +18,9 @@ release-candidate path automatically:
 1. compute the next semantic version
 2. create a prerelease tag `v<major>.<minor>.<patch>-rc.<n>`
 3. validate prerelease asset and container publication
-4. promote the candidate to the stable tag on the same commit and wait for the
-   stable publish workflows, including the APT repository
+4. if the release only holds automated updates, promote the candidate to the
+   stable tag on the same commit and wait for the stable publish workflows,
+   including the APT repository
 
 ## Workflow Map
 
@@ -57,7 +58,10 @@ Behavior:
 - dispatches `container-image.yml` and `release-assets.yml` from the current
   default branch with the target tag passed explicitly
 - waits for those prerelease publish paths to succeed
-- tags the same commit as the stable release, which needs
+- checks with `scripts/automated-only.sh` whether every release-bearing commit
+  since the last stable release came from Dependabot, Renovate or this
+  repository's workflows, and stops at the candidate if any came from a person
+- if so, tags the same commit as the stable release, which needs
   `RELEASE_AUTOMATION_TOKEN` so the tag starts its publish workflows, and waits
   for `release-assets.yml`, `container-image.yml` and
   `publish-apt-repository.yml` to finish for it
@@ -70,9 +74,10 @@ Recovery path:
 
 Important consequences:
 
-- stable tags are created by the release automation once the candidate's
-  publish path passes; the `Promote Release Candidate` workflow is only for
-  recovering from a run that failed partway
+- stable tags for automated updates are created by the release automation once
+  the candidate's publish path passes; a release that includes a change a
+  person merged is promoted with the `Promote Release Candidate` workflow, which
+  also finishes a run that failed partway
 - release candidates and their matching stable releases point at the same
   commit, so the checked-in changelog records the stable package version while
   RC package builds rewrite their build-local changelog version to `~rc.N`
@@ -216,7 +221,8 @@ Current behavior:
 
 Operationally, this means passing dependency updates flow from PR to a
 published stable release, APT package and `latest` image without manual
-intervention.
+intervention, while a change a person merged gets a release candidate and waits
+for a maintainer to promote it.
 
 ## Trust Boundaries
 
@@ -242,8 +248,9 @@ Automation is the default, but a maintainer still steps in when:
 - prerelease asset publication fails
 - container publication fails
 - APT signing or Pages publication fails
-- the automatic promotion failed partway, so the `Promote Release Candidate`
-  workflow is needed to finish it
+- a release candidate includes a change a person merged and is ready to be
+  promoted with the `Promote Release Candidate` workflow, or an automatic
+  promotion failed partway and needs finishing
 - a dependency update stays red and should not merge automatically
 
 ## What Does Not Create A Release
