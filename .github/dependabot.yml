@@ -51,6 +51,8 @@ updates:
       - dependencies
       - docker
 
+  # The docs site doesn't ship in the package, so its updates use chore, which doesn't cut a
+  # release. deps would, and every site dependency bump would publish a new release.
   - package-ecosystem: npm
     directory: /website
     open-pull-requests-limit: 10
@@ -63,7 +65,7 @@ updates:
           - "version-update:semver-minor"
           - "version-update:semver-patch"
     commit-message:
-      prefix: "deps"
+      prefix: "chore"
     labels:
       - dependencies
       - website
