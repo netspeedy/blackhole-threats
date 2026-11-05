@@ -65,8 +65,6 @@ feeds:
     community: 64520:1104
   - url: https://www.dan.me.uk/torlist/?full
     community: 64520:1105
-  - url: https://sslbl.abuse.ch/blacklist/sslipblacklist.txt
-    community: 64520:1106
   - url: https://rules.emergingthreats.net/fwrules/emerging-Block-IPs.txt
     community: 64520:1107
   - url: https://home.nuug.no/~peter/bsdly.net.traplist
