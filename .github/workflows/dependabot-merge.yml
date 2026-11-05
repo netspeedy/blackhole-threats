@@ -23,10 +23,8 @@ concurrency:
 
 permissions:
   actions: read
-  checks: read
   contents: write
   pull-requests: write
-  statuses: read
 
 jobs:
   merge:
@@ -148,28 +146,6 @@ jobs:
                 author {
                   login
                 }
-                commits(last: 1) {
-                  nodes {
-                    commit {
-                      statusCheckRollup {
-                        contexts(first: 100) {
-                          nodes {
-                            __typename
-                            ... on CheckRun {
-                              name
-                              status
-                              conclusion
-                            }
-                            ... on StatusContext {
-                              context
-                              state
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
               }
             }
           }'
@@ -185,7 +161,7 @@ jobs:
             local approval_detail="$4"
 
             # shellcheck disable=SC2016
-            if printf '%s' "${title}" | grep -Eq '^(deps|container|build|packaging)(\([^)]+\))?:'; then
+            if grep -Eq '^(deps|container|build|packaging)(\([^)]+\))?:' <<<"${title}"; then
               printf '%s%s%s' \
                 "${action} and left release-bearing conventional commit metadata intact for the automated release flow." \
                 "${validation_detail}" \
@@ -198,31 +174,28 @@ jobs:
             fi
           }
 
-          latest_successful_run() {
+          # The URL of the newest successful run of a workflow for a head revision, or nothing.
+          # jq picks the run, rather than head -n1, which under pipefail fails the pipeline when
+          # gh is killed by SIGPIPE for writing after head has exited.
+          latest_successful_run_url() {
             local workflow="$1"
             local head_sha="$2"
 
             gh run list \
               --workflow "${workflow}" \
               --limit 100 \
-              --json databaseId,headSha,event,conclusion,url \
-              --jq '.[] | select((.event == "pull_request" or .event == "workflow_dispatch") and .headSha == "'"${head_sha}"'" and .conclusion == "success") | @base64' \
-              | head -n1
+              --json headSha,event,conclusion,url \
+              --jq 'map(select((.event == "pull_request" or .event == "workflow_dispatch") and .headSha == "'"${head_sha}"'" and .conclusion == "success")) | first | .url // empty'
           }
 
           build_validate_detail_for_head() {
             local head_sha="$1"
-            validation_run="$(latest_successful_run "Build and Validate" "${head_sha}")"
-            if [ -z "${validation_run}" ]; then
+            validation_url="$(latest_successful_run_url "Build and Validate" "${head_sha}")"
+            if [ -z "${validation_url}" ]; then
               return 1
             fi
 
-            validation_url="$(printf '%s' "${validation_run}" | base64 --decode | jq -r '.url // ""')"
-            if [ -n "${validation_url}" ]; then
-              printf ' Verified against successful Build and Validate run %s.' "${validation_url}"
-            else
-              printf ' Verified against a successful Build and Validate run for the current PR head revision.'
-            fi
+            printf ' Verified against successful Build and Validate run %s.' "${validation_url}"
           }
 
           {
@@ -304,7 +277,7 @@ jobs:
             elif validation_detail="$(build_validate_detail_for_head "${head_sha}")"; then
               # Build and Validate doesn't build the image, and the pin refresh only changes
               # the Dockerfile, so a sweep also wants a green Container Image run.
-              if [ -z "$(latest_successful_run "Container Image" "${head_sha}")" ]; then
+              if [ -z "$(latest_successful_run_url "Container Image" "${head_sha}")" ]; then
                 skipped=$((skipped + 1))
                 printf '| [#%s](%s) | skipped | No successful Container Image run was found for the current PR head revision. |\n' "${pr_number}" "${url}" >> "${GITHUB_STEP_SUMMARY}"
                 continue
@@ -345,7 +318,7 @@ jobs:
               merged=$((merged + 1))
               detail="$(merge_result_detail "${title}" 'Merged' "${validation_detail}" "${approval_detail}")"
               printf '| [#%s](%s) | merged | %s |\n' "${pr_number}" "${url}" "$(escape_markdown "${detail}")" >> "${GITHUB_STEP_SUMMARY}"
-            elif printf '%s' "${merge_output}" | grep -Fq 'without workflows permission'; then
+            elif grep -Fq 'without workflows permission' <<<"${merge_output}"; then
               skipped=$((skipped + 1))
               if [ -n "${AUTOMATION_AUTOMERGE_TOKEN:-}" ]; then
                 detail="GitHub rejected the merge because the configured automation auto-merge token does not have enough workflow permissions for this PR."
@@ -353,7 +326,7 @@ jobs:
                 detail="This PR updates workflow files. Add an \`AUTOMATION_AUTOMERGE_TOKEN\` secret with repository contents, pull requests, and workflows write access to automate this class of PR."
               fi
               printf '| [#%s](%s) | skipped | %s |\n' "${pr_number}" "${url}" "$(escape_markdown "${detail}")" >> "${GITHUB_STEP_SUMMARY}"
-            elif printf '%s' "${merge_output}" | grep -Fq "add the \`--auto\` flag"; then
+            elif grep -Fq "add the \`--auto\` flag" <<<"${merge_output}"; then
               if auto_merge_output="$(gh pr merge --auto "${merge_args[@]}" 2>&1)"; then
                 auto_merged=$((auto_merged + 1))
                 detail="$(merge_result_detail "${title}" 'Enabled auto-merge' "${validation_detail}" "${approval_detail}")"
