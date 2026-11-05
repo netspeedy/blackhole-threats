@@ -310,14 +310,19 @@ jobs:
                 "Original pull request: ${url}"
             )"
 
-            merge_args=(
-              --squash
-              --delete-branch
-              --match-head-commit "${head_sha}"
-              --subject "${title}"
-              --body "${merge_body}"
-              "${pr_number}"
-            )
+            # A squash merge takes its author from whoever opened the pull request,
+            # github-actions[bot] for this repository's own refresh. That pull
+            # request's one commit is authored as netspeedybot with the title as its
+            # subject, so rebase it to keep both; Dependabot's are squashed.
+            case "${author}" in
+              github-actions\[bot\] | github-actions | app/github-actions)
+                merge_args=(--rebase)
+                ;;
+              *)
+                merge_args=(--squash --subject "${title}" --body "${merge_body}")
+                ;;
+            esac
+            merge_args+=(--delete-branch --match-head-commit "${head_sha}" "${pr_number}")
 
             if merge_output="$(gh pr merge "${merge_args[@]}" 2>&1)"; then
               merged=$((merged + 1))

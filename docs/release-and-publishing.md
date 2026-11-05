@@ -316,7 +316,9 @@ Current behavior:
 - when GitHub cannot merge immediately but the PR is otherwise eligible, the
   workflow enables GitHub auto-merge so the PR can land as soon as the
   remaining repository requirements are satisfied
-- the original PR title is preserved as the squash commit subject
+- the original PR title is preserved as the squash commit subject; the pin
+  refresh is rebase-merged instead, keeping its `netspeedybot` commit, whose
+  subject is the same title
 - `deps:` and `container:` updates remain release-bearing after merge; the pin
   refresh is titled `container:` too, since everything it changes is in the
   published image
@@ -441,7 +443,8 @@ Checks:
 - confirm the PR is still open and not in draft state
 - confirm it is authored by `dependabot[bot]` or `github-actions[bot]`
 - confirm there are no merge conflicts
-- confirm branch protection still allows squash merge after checks pass
+- confirm branch protection still allows squash merge, and rebase merge for
+  the pin refresh, after checks pass
 - if GitHub says to add `--auto`, confirm the workflow enabled auto-merge and
   let GitHub finish the merge after the remaining requirements settle
 - confirm the `AUTOMATION_AUTOMERGE_TOKEN` organisation secret is still shared
