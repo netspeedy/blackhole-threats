@@ -24,7 +24,7 @@ automation.
 - `internal/bgp` owns GoBGP lifecycle and route announce/withdraw logic.
 - Keep operator-facing sample configuration in `examples/`.
 - Keep container runtime assets under `packaging/container/`; the Docker image
-  root filesystem and S6 service definitions belong there, not inline in the
+  root filesystem and its entrypoint script belong there, not inline in the
   workflow files.
 - Keep Debian packaging metadata in `debian/`.
 - Keep release and repository automation scripts in `scripts/`.
@@ -245,8 +245,14 @@ automation.
   unless the repository owner or publishing design changes intentionally.
 - Keep the Docker builder and runtime bases aligned with the supported Debian
   release line used by the repo.
-- Keep the pinned `S6_OVERLAY_VERSION` and the matching checksum pins in
-  `Dockerfile`; the scheduled refresh workflow updates them together.
+- The image has no init or supervisor: `ENTRYPOINT` is the entrypoint script,
+  which writes the placeholder config if needed and `exec`s the daemon, so the
+  daemon is PID 1 and `docker kill --signal=SIGUSR1` refreshes it while
+  `docker stop` shuts it down cleanly. It used to run under s6-overlay's
+  `/init`, where SIGUSR1 reached s6-svscan and stopped the whole container.
+  Don't put an init back in front of the daemon unless it forwards SIGUSR1, and
+  keep the SIGUSR1 check in the container workflow's smoke test.
+  The scheduled refresh workflow only refreshes the Go build image pin.
 - Container bootstrap behavior should continue to create or expose the sample
   config through `/config` as documented and smoke-tested by CI.
 - Keep container platform coverage at `linux/amd64` and `linux/arm64` unless the

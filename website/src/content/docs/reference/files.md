@@ -38,9 +38,9 @@ the journal under the identifier `blackhole-threats`.
 | `BLACKHOLE_THREATS_CONF` | `/config/blackhole-threats.yaml` | The config path. Only the default path gets a placeholder if it's missing. |
 | `BLACKHOLE_THREATS_EXTRA_OPTS` | empty | More flags, split on spaces |
 
-The image's entrypoint is s6-overlay's `/init`, which runs the entrypoint script as its command.
-The daemon runs as root from `/`, listens on port 179 (the image exposes it) and logs to standard
-output.
+The image's entrypoint is the entrypoint script, which execs the daemon, so the daemon is the
+container's process 1 and receives `docker kill` and `docker stop` signals itself. It runs as root
+from `/`, listens on port 179 (the image exposes it) and logs to standard output.
 
 ## Release archives and source builds
 

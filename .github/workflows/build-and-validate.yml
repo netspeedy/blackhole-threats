@@ -45,9 +45,6 @@ jobs:
           bash -n scripts/prepare-debian-changelog.sh
           bash -n scripts/update-debian-changelog.sh
           sh -n packaging/container/rootfs/usr/local/bin/blackhole-threats-entrypoint
-          sh -n packaging/container/rootfs/etc/s6-overlay/s6-rc.d/blackhole-threats/run
-          sh -n packaging/container/rootfs/etc/s6-overlay/s6-rc.d/blackhole-threats/log/run
-          sh -n packaging/container/rootfs/etc/s6-overlay/s6-rc.d/blackhole-threats/finish
 
       - name: Set up Node.js
         uses: actions/setup-node@v7

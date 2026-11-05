@@ -76,19 +76,27 @@ jobs:
             VCS_REF=${{ steps.prep.outputs.source_sha }}
             BUILD_DATE=${{ steps.prep.outputs.build_date }}
 
-      - name: Verify container bootstrap
+      # The daemon is the container's PID 1, so docker kill and docker stop signal it directly:
+      # SIGUSR1 has to refresh and leave the container running, and docker stop's SIGTERM has to
+      # shut it down cleanly with exit code 0.
+      - name: Verify container bootstrap and signals
         run: |
           mkdir -p .tmp-config
           cid="$(docker run -d -v "$PWD/.tmp-config:/config" blackhole-threats:test)"
           sleep 5
           test -f .tmp-config/blackhole-threats.yaml
           docker logs "$cid"
-          docker kill --signal=SIGINT "$cid"
-          docker wait "$cid"
+          docker kill --signal=SIGUSR1 "$cid"
+          sleep 2
+          test "$(docker inspect -f '{{.State.Running}}' "$cid")" = true
+          docker logs "$cid" 2>&1 | grep -F 'msg="Refresh signal received"'
+          docker stop "$cid"
+          test "$(docker inspect -f '{{.State.ExitCode}}' "$cid")" = 0
           logs="$(docker logs "$cid" 2>&1)"
           printf '%s\n' "$logs"
           printf '%s\n' "$logs" | grep -F 'msg="Starting blackhole-threats"'
           printf '%s\n' "$logs" | grep -F 'tag_version='
+          printf '%s\n' "$logs" | grep -F 'msg="Shutdown requested" signal=terminated'
           printf '%s\n' "$logs" | grep -F 'msg="Stopped blackhole-threats"'
           docker rm -f "$cid"
           rm -rf .tmp-config

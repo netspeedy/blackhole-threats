@@ -23,7 +23,7 @@ How to send them:
 | Where it runs | Refresh | Stop |
 | --- | --- | --- |
 | Debian package | `sudo systemctl reload blackhole-threats` | `sudo systemctl stop blackhole-threats` |
-| Container | See [Container](/blackhole-threats/guides/container/#refresh-restart-and-logs) | `docker stop blackhole-threats` |
+| Container | `docker kill --signal=SIGUSR1 blackhole-threats` | `docker stop blackhole-threats` |
 | By hand | `kill -USR1 <pid>` | `kill <pid>`, or Ctrl-C |
 
 ## Exit codes
