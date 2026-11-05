@@ -120,7 +120,7 @@ blackhole-threats -conf /etc/blackhole-threats.yaml -check-config
 It checks the local ASN, the router ID, the BGP ports and every feed, then exits without starting BGP:
 
 ```text
-configuration OK: 11 feed(s)
+configuration OK: 10 feed(s)
 ```
 
 Before binding to production port 179, copy
