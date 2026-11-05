@@ -36,6 +36,10 @@ format suitable for local reading, journald, and syslog-style collection.
 Startup logs include build metadata plus the effective runtime configuration
 summary.
 .SH OPTIONS
+.B blackhole-threats
+takes no arguments other than these options. Anything else, such as an option
+written without its leading dash, is an error, and the daemon exits with
+status 2, as it does for an unknown option.
 .TP
 .B \-check-config
 Validate the configuration and exit without starting the BGP server.

@@ -34,7 +34,7 @@ How to send them:
 | --- | --- |
 | 0 | `-check-config` passed, `-version` or `-h` printed, `-once` finished, or the daemon stopped cleanly on `SIGINT` or `SIGTERM` |
 | 1 | A fatal error: a bad config, an invalid feed, a bad `-log-format`, `-log-level` or `-refresh-rate`, GoBGP failing to start, or `Route sync failed` |
-| 2 | An unknown flag or a flag value that doesn't parse |
+| 2 | An unknown flag, a flag value that doesn't parse, or an argument that isn't a flag |
 
 `-once` exits 0 even when feeds fail, because a failed feed is logged and carried over rather than
 treated as an error. A smoke test that needs every feed to work should check the output for
