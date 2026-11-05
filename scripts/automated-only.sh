@@ -17,6 +17,11 @@
 # author's profile, which anyone can set to "dependabot[bot]", but the email is the account's
 # ID-prefixed noreply address, which nobody else can claim.
 #
+# The repositories' own workflows commit as netspeedybot; github-actions[bot] covers older commits
+# and anything squash-merged from a pull request GITHUB_TOKEN opened. netspeedybot is an account a
+# person could sign in to, so it's trusted here only because nobody commits or opens pull requests
+# as it by hand.
+#
 # Usage: bash scripts/release/automated-only.sh [<since tag>] [<until ref>]
 set -euo pipefail
 
@@ -34,6 +39,7 @@ human_commits="$(
       automated["49699333+dependabot[bot]@users.noreply.github.com"] = 1
       automated["29139614+renovate[bot]@users.noreply.github.com"] = 1
       automated["41898282+github-actions[bot]@users.noreply.github.com"] = 1
+      automated["45371234+netspeedybot@users.noreply.github.com"] = 1
     }
     {
       email = $1

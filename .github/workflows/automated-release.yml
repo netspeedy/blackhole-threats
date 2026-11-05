@@ -117,8 +117,8 @@ jobs:
             exit 1
           fi
 
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "netspeedybot"
+          git config user.email "45371234+netspeedybot@users.noreply.github.com"
           git add debian/changelog
           git commit -m "chore(release): update Debian changelog for ${{ steps.candidate.outputs.stable_tag }}"
 
@@ -147,8 +147,8 @@ jobs:
           set -euo pipefail
 
           push_token="${RELEASE_AUTOMATION_TOKEN:-${DEFAULT_GH_TOKEN}}"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "netspeedybot"
+          git config user.email "45371234+netspeedybot@users.noreply.github.com"
           git tag -a "${{ steps.candidate.outputs.candidate_tag }}" -m "Release candidate ${{ steps.candidate.outputs.candidate_tag }}"
           if ! git push "https://x-access-token:${push_token}@github.com/${GITHUB_REPOSITORY}.git" "refs/tags/${{ steps.candidate.outputs.candidate_tag }}" 2>push.err; then
             cat push.err >&2
@@ -183,8 +183,8 @@ jobs:
             exit 1
           fi
 
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "netspeedybot"
+          git config user.email "45371234+netspeedybot@users.noreply.github.com"
           git tag -a "${{ steps.candidate.outputs.stable_tag }}" "${RELEASE_SHA}" -m "Release ${{ steps.candidate.outputs.stable_tag }}"
           git push "https://x-access-token:${RELEASE_AUTOMATION_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
             "refs/tags/${{ steps.candidate.outputs.stable_tag }}"
