@@ -41,6 +41,12 @@ gobgp:
         neighboraddress: "2001:db8:30::1"
         peeras: 64520
 
+# Optional: the shortest prefixes announced. A feed line shorter than these,
+# such as 0.0.0.0/0, is dropped with a warning. These are the defaults.
+# limits:
+#   min_ipv4_prefix_length: 8
+#   min_ipv6_prefix_length: 16
+
 feeds:
   - url: http://localhost:41412/security/blocklist
     community: 64520:1100

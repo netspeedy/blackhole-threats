@@ -81,12 +81,12 @@ blackhole-threats -conf lab.yaml -once
 
 ```text title="Output"
 time=2026-11-05T04:38:15Z level=info msg="Starting blackhole-threats" build_date=2026-11-05T04:26:59Z commit=8022bad go_arch=arm64 go_os=darwin go_version=go1.27.3 pid=72697 tag_version=v1.1.6-rc.7
-time=2026-11-05T04:38:15Z level=info msg="Loaded runtime configuration" cli_feeds=0 config_path=lab.yaml configured_feeds=1 default_community=64520:666 local_as=64520 peer_count=1 refresh_interval=2h0m0s router_id=198.51.100.10 run_mode=oneshot total_feeds=1
+time=2026-11-05T04:38:15Z level=info msg="Loaded runtime configuration" cli_feeds=0 config_path=lab.yaml configured_feeds=1 default_community=64520:666 local_as=64520 min_ipv4_prefix_length=8 min_ipv6_prefix_length=16 peer_count=1 refresh_interval=2h0m0s router_id=198.51.100.10 run_mode=oneshot total_feeds=1
 time=2026-11-05T04:38:15Z level=info msg="Add Peer" component=gobgp key= topic=config
 time=2026-11-05T04:38:15Z level=info msg="Add a peer configuration" component=gobgp key=198.51.100.1 topic=Peer
 time=2026-11-05T04:38:15Z level=info msg="Started blackhole-threats"
-time=2026-11-05T04:38:15Z level=info msg="Parsed threat feed" prefixes_read=4 source=./local-feed.txt
-time=2026-11-05T04:38:15Z level=info msg="Prepared community routes" community=64520:1200 feed_count=1 prefixes_read=4 prefixes_summarized=3
+time=2026-11-05T04:38:15Z level=info msg="Parsed threat feed" prefixes_dropped=0 prefixes_read=4 source=./local-feed.txt
+time=2026-11-05T04:38:15Z level=info msg="Prepared community routes" community=64520:1200 feed_count=1 prefixes_dropped=0 prefixes_read=4 prefixes_summarized=3
 time=2026-11-05T04:38:15Z level=info msg="Refresh completed" active_routes=3 announced=3 duration_ms=2 withdrawn=0
 time=2026-11-05T04:38:15Z level=info msg="Completed single refresh cycle"
 time=2026-11-05T04:38:15Z level=info msg="Delete a peer configuration" component=gobgp key=198.51.100.1 topic=Peer

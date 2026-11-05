@@ -24,9 +24,9 @@ has starting points for RouterOS. It does nothing with routes its peers send it,
 state on disk: the routes it announces live in memory and are rebuilt from the feeds when it
 starts.
 
-It doesn't vet what the feeds say either. Whatever valid prefix a feed lists is announced,
-including a very short one, so only use feeds you trust and keep each one under its own
-community.
+It doesn't vet what the feeds say either, beyond refusing prefixes shorter than `/8` for IPv4 or
+`/16` for IPv6, so a stray `0.0.0.0/0` can't blackhole everything. Any other valid prefix a feed
+lists is announced, so only use feeds you trust and keep each one under its own community.
 
 ## How a refresh works
 
@@ -40,6 +40,7 @@ you send it `SIGUSR1`. Each refresh does the same thing:
 
 2. It reads every feed in a group at the same time, takes one prefix from each line of a text
    feed or each object of a JSON feed, and turns bare addresses into `/32` or `/128` host routes.
+   Prefixes shorter than the limits, `/8` and `/16` by default, are dropped.
 
 3. It summarises each group: duplicates and prefixes inside a broader one go, and sibling
    prefixes merge into their parent. Two `/25`s that make up a `/24` become the `/24`.

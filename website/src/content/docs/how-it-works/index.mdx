@@ -18,8 +18,8 @@ announcements](/blackhole-threats/how-it-works/bgp/) go into the two halves in d
 1. It reads the flags and sets up logging. A bad `-log-format` or `-log-level` stops it here.
 
 2. It loads the YAML file and decodes it strictly, so an unknown key is an error. Then it checks
-   that the local ASN isn't 0, that the router ID is an IPv4 address and that every feed has a
-   path or an `http://` or `https://` URL.
+   that the local ASN isn't 0, that the router ID is an IPv4 address, that the `limits` are in
+   range and that every feed has a path or an `http://` or `https://` URL.
 
 3. It adds the feeds from any `-feed` flags to the ones in the file, checks those too, and checks
    that `-refresh-rate` is more than zero. With `-check-config` it prints
@@ -53,12 +53,12 @@ feed file was moved away, so the community keeps the routes it had:
 
 ```text title="Output"
 time=2026-11-05T04:40:51Z level=info msg="Started blackhole-threats"
-time=2026-11-05T04:40:51Z level=info msg="Parsed threat feed" prefixes_read=4 source=./local-feed.txt
-time=2026-11-05T04:40:51Z level=info msg="Prepared community routes" community=64520:1200 feed_count=1 prefixes_read=4 prefixes_summarized=3
+time=2026-11-05T04:40:51Z level=info msg="Parsed threat feed" prefixes_dropped=0 prefixes_read=4 source=./local-feed.txt
+time=2026-11-05T04:40:51Z level=info msg="Prepared community routes" community=64520:1200 feed_count=1 prefixes_dropped=0 prefixes_read=4 prefixes_summarized=3
 time=2026-11-05T04:40:51Z level=info msg="Refresh completed" active_routes=3 announced=3 duration_ms=0 withdrawn=0
 time=2026-11-05T04:40:51Z level=info msg="Refresh signal received" signal="user defined signal 1"
-time=2026-11-05T04:40:51Z level=info msg="Parsed threat feed" prefixes_read=4 source=./local-feed.txt
-time=2026-11-05T04:40:51Z level=info msg="Prepared community routes" community=64520:1200 feed_count=1 prefixes_read=4 prefixes_summarized=3
+time=2026-11-05T04:40:51Z level=info msg="Parsed threat feed" prefixes_dropped=0 prefixes_read=4 source=./local-feed.txt
+time=2026-11-05T04:40:51Z level=info msg="Prepared community routes" community=64520:1200 feed_count=1 prefixes_dropped=0 prefixes_read=4 prefixes_summarized=3
 time=2026-11-05T04:40:51Z level=info msg="Refresh completed" active_routes=3 announced=1 duration_ms=0 withdrawn=1
 time=2026-11-05T04:40:51Z level=info msg="Refresh signal received" signal="user defined signal 1"
 time=2026-11-05T04:40:51Z level=error msg="Failed to read threat feed" error="open ./local-feed.txt: no such file or directory" source=./local-feed.txt
@@ -71,8 +71,8 @@ time=2026-11-05T04:40:51Z level=info msg="Refresh completed" active_routes=3 ann
 | Step | What happens | Log line |
 | --- | --- | --- |
 | Group | Feeds are grouped by community, and feeds without one get `<local ASN>:666` | |
-| Read | Each group's feeds are read at the same time; groups are read one after another | `Parsed threat feed`, `Failed to read threat feed` |
-| Summarise | Each group's prefixes are deduplicated and merged into as few routes as cover them | `Prepared community routes` |
+| Read | Each group's feeds are read at the same time; groups are read one after another. Prefixes shorter than the limits are dropped. | `Parsed threat feed`, `Failed to read threat feed`, `Dropped prefix shorter than the minimum length` |
+| Summarise | Each group's prefixes are deduplicated and merged into as few routes as cover them, never into one shorter than the limits | `Prepared community routes` |
 | Carry forward | A group with a failed feed keeps the routes it had after the last refresh | `Keeping previous community routes after feed errors` |
 | Reconcile | Routes that are gone or whose communities changed are withdrawn; new and changed ones are announced | `Refresh completed` |
 

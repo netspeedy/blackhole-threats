@@ -19,6 +19,8 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+
+	"github.com/netspeedy/blackhole-threats/internal/config"
 )
 
 var ErrUnhandledScheme = errors.New("unhandled scheme")
@@ -27,11 +29,17 @@ var defaultHTTPClient = &http.Client{Timeout: 30 * time.Second}
 
 type Reader struct {
 	Client *http.Client
+	// Limits sets the shortest prefix kept for each address family. The zero value applies the
+	// defaults, /8 for IPv4 and /16 for IPv6.
+	Limits config.Limits
 }
 
 type ReadResult struct {
-	Prefixes      []netip.Prefix
-	Count         int
+	Prefixes []netip.Prefix
+	// Count is how many prefixes the feeds that were read gave, including any that were dropped.
+	Count int
+	// Dropped is how many of those were shorter than the limits and left out.
+	Dropped       int
 	FailedSources []string
 }
 
@@ -74,7 +82,7 @@ func (r Reader) ReadMany(ctx context.Context, sources ...string) ReadResult {
 	}()
 
 	var prefixes []netip.Prefix
-	var total int
+	var total, dropped int
 	var failed []string
 	for result := range results {
 		if result.err != nil {
@@ -83,19 +91,51 @@ func (r Reader) ReadMany(ctx context.Context, sources ...string) ReadResult {
 			continue
 		}
 
-		prefixes = append(prefixes, result.prefixes...)
+		kept, short := r.dropShortPrefixes(result.prefixes, log.Fields{"source": result.source})
+		prefixes = append(prefixes, kept...)
 		total += result.count
+		dropped += short
 		log.WithFields(log.Fields{
-			"source":        result.source,
-			"prefixes_read": result.count,
+			"source":           result.source,
+			"prefixes_read":    result.count,
+			"prefixes_dropped": short,
 		}).Info("Parsed threat feed")
 	}
 
+	// Summarising never merges past the limits, so this shouldn't find anything. It's here so
+	// that nothing shorter than the limits can be announced even if that ever changes.
+	summarized, short := r.dropShortPrefixes(summarizePrefixes(prefixes, r.Limits), log.Fields{"sources": sources})
+	dropped += short
+
 	return ReadResult{
-		Prefixes:      summarizePrefixes(prefixes),
+		Prefixes:      summarized,
 		Count:         total,
+		Dropped:       dropped,
 		FailedSources: failed,
 	}
+}
+
+// dropShortPrefixes returns the prefixes that are at least as long as the limit for their address
+// family, and how many it left out. Each one left out is logged with fields, which say where it
+// came from.
+func (r Reader) dropShortPrefixes(prefixes []netip.Prefix, fields log.Fields) ([]netip.Prefix, int) {
+	kept := make([]netip.Prefix, 0, len(prefixes))
+	dropped := 0
+	for _, prefix := range prefixes {
+		limit := r.Limits.MinPrefixLength(prefix.Addr())
+		if prefix.Bits() >= limit {
+			kept = append(kept, prefix)
+			continue
+		}
+
+		dropped++
+		log.WithFields(fields).WithFields(log.Fields{
+			"prefix":            prefix.String(),
+			"min_prefix_length": limit,
+		}).Warn("Dropped prefix shorter than the minimum length")
+	}
+
+	return kept, dropped
 }
 
 func (r Reader) readOne(ctx context.Context, source string) ([]netip.Prefix, int, error) {
@@ -330,7 +370,10 @@ func parseNetworkToken(token string) (netip.Prefix, bool) {
 	return netip.Prefix{}, false
 }
 
-func summarizePrefixes(prefixes []netip.Prefix) []netip.Prefix {
+// summarizePrefixes masks, deduplicates and merges prefixes into as few as cover them. It never
+// merges two prefixes into a parent shorter than limits allows: two adjacent /8s stay as two /8s
+// rather than becoming a /7 that would then have to be dropped, taking both with it.
+func summarizePrefixes(prefixes []netip.Prefix, limits config.Limits) []netip.Prefix {
 	if len(prefixes) == 0 {
 		return nil
 	}
@@ -349,7 +392,7 @@ func summarizePrefixes(prefixes []netip.Prefix) []netip.Prefix {
 	current = pruneContainedPrefixes(current)
 
 	for {
-		next := mergeSiblingPrefixes(current)
+		next := mergeSiblingPrefixes(current, limits)
 		sortPrefixes(next)
 		next = pruneContainedPrefixes(next)
 		if samePrefixes(current, next) {
@@ -392,7 +435,7 @@ func pruneContainedPrefixes(prefixes []netip.Prefix) []netip.Prefix {
 	return result
 }
 
-func mergeSiblingPrefixes(prefixes []netip.Prefix) []netip.Prefix {
+func mergeSiblingPrefixes(prefixes []netip.Prefix, limits config.Limits) []netip.Prefix {
 	result := make([]netip.Prefix, 0, len(prefixes))
 	for _, prefix := range prefixes {
 		if len(result) == 0 {
@@ -401,7 +444,7 @@ func mergeSiblingPrefixes(prefixes []netip.Prefix) []netip.Prefix {
 		}
 
 		last := result[len(result)-1]
-		if merged, ok := mergePair(last, prefix); ok {
+		if merged, ok := mergePair(last, prefix, limits); ok {
 			result[len(result)-1] = merged
 			continue
 		}
@@ -412,8 +455,11 @@ func mergeSiblingPrefixes(prefixes []netip.Prefix) []netip.Prefix {
 	return result
 }
 
-func mergePair(a, b netip.Prefix) (netip.Prefix, bool) {
+func mergePair(a, b netip.Prefix, limits config.Limits) (netip.Prefix, bool) {
 	if a.Bits() != b.Bits() || a.Bits() == 0 || a.Addr().BitLen() != b.Addr().BitLen() {
+		return netip.Prefix{}, false
+	}
+	if a.Bits()-1 < limits.MinPrefixLength(a.Addr()) {
 		return netip.Prefix{}, false
 	}
 

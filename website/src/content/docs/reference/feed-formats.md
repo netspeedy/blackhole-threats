@@ -8,7 +8,9 @@ IPv6 prefixes. A bare address becomes a host route, `/32` for IPv4 and `/128` fo
 every prefix is masked to its network boundary, so `192.0.2.77/24` is read as `192.0.2.0/24`.
 Values that aren't addresses or prefixes are skipped without an error.
 
-There's no limit on prefix length, so a feed that lists `0.0.0.0/0` or `::/0` gets it announced.
+A prefix shorter than the limits, `/8` for IPv4 and `/16` for IPv6 unless the config's `limits`
+section says otherwise, is dropped with a warning after it's read, so a feed that lists
+`0.0.0.0/0` or `::/0` never gets it announced. The rest of the feed is still used.
 
 ## Text or JSON
 

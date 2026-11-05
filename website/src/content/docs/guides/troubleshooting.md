@@ -26,6 +26,7 @@ The daemon exits with code 1 and one of these:
 | `Failed to load configuration` with `neighbor endpoint port` | A neighbor `port` that isn't 1 to 65535, or one that disagrees with `transport.config.remoteport` |
 | `Invalid configuration` with `invalid local ASN` | `gobgp.global.config.as` is missing or 0 |
 | `Invalid configuration` with `invalid router ID` | `routerid` is missing or isn't an IPv4 address |
+| `Invalid configuration` with `invalid minimum prefix length` | `limits.min_ipv4_prefix_length` isn't 1 to 32, or `limits.min_ipv6_prefix_length` isn't 1 to 128 |
 | `Invalid configuration` or `Invalid feed configuration` with `missing feed URL` or `unsupported feed scheme` | A feed with an empty `url`, or a scheme other than `http` or `https` (in the file or a `-feed` flag) |
 | `Refresh timer must be greater than zero` | `-refresh-rate` is 0 or negative |
 | `Invalid log format` or `Invalid log level` | A value `-log-format` or `-log-level` doesn't take |
@@ -90,6 +91,8 @@ GoBGP's own lines, marked `component=gobgp`, show what it's doing with the peers
 - A text feed puts several addresses on one line. Only the first prefix on each line is read.
 - A feed changed upstream, or several feeds now overlap.
 - A community is being carried forward after a failure, so it's still on older, smaller data.
+- Some prefixes were shorter than the limits. `Dropped prefix shorter than the minimum length`
+  names each one, and `prefixes_dropped` counts them.
 
 ## The container has no config
 

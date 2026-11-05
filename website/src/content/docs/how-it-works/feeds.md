@@ -1,6 +1,6 @@
 ---
 title: Feeds and communities
-description: Where feeds come from, how they're grouped by community, what counts as a failure, how prefixes are summarised and what's kept when a feed fails.
+description: Where feeds come from, how they're grouped by community, what counts as a failure, which prefixes are too short to announce, how prefixes are summarised and what's kept when a feed fails.
 ---
 
 A feed is a list of networks to blackhole, and a community is the label its routes carry. The
@@ -49,6 +49,23 @@ prefixes, or close to it, and the group is rebuilt without them. If that's the g
 had is withdrawn. Watch `prefixes_read` on `Parsed threat feed` for a source that suddenly drops
 to 0.
 
+## Short prefixes
+
+A blackhole route for `0.0.0.0/0` would tell your routers to drop everything, so blackhole-threats
+won't announce anything that broad. By default the shortest prefix it announces is a `/8` for
+IPv4 and a `/16` for IPv6, and the config's
+[`limits`](/blackhole-threats/reference/configuration/#limits) section changes either one.
+
+A prefix shorter than its limit is dropped as soon as the feed is read. Each one logs
+`Dropped prefix shorter than the minimum length` with the feed, the prefix and the limit, and the
+count goes into `prefixes_dropped` on `Parsed threat feed` and `Prepared community routes`. The
+feed itself isn't treated as failed: the rest of its prefixes are used as normal, because failing
+it would keep its old routes announced for as long as that one line stayed in the feed.
+
+Lists of unallocated address space, such as full bogon lists, describe it in big blocks, so
+they're the feeds most likely to hit the limits. Expect a warning for each such line on every
+refresh.
+
 ## Summarising
 
 Each group's prefixes are summarised before they become routes. blackhole-threats masks every
@@ -56,6 +73,10 @@ prefix to its network boundary (`192.0.2.77/24` becomes `192.0.2.0/24`), drops d
 prefixes that sit inside a broader one, and merges pairs of sibling prefixes into their parent,
 repeating until nothing changes. Two `/25`s that make up a `/24` become the `/24`, and four
 consecutive `/26`s end up as one `/24` too.
+
+Merging stops at the limits. Two neighbouring IPv4 `/8`s stay as two `/8`s rather than becoming a
+`/7`, which would be shorter than the default limit. The summarised list is checked against the
+limits again before it becomes routes, as a backstop.
 
 `Prepared community routes` logs the count before and after as `prefixes_read` and
 `prefixes_summarized`. A big gap between them is normal for feeds that list many neighbouring

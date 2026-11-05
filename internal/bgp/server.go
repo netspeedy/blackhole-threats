@@ -37,7 +37,9 @@ type feedReader interface {
 	ReadMany(ctx context.Context, sources ...string) feed.ReadResult
 }
 
-func New(configSet *oc.BgpConfigSet) (*Server, error) {
+// New starts the embedded GoBGP server with configSet. Feeds are read with limits applied, so
+// nothing shorter than them is announced.
+func New(configSet *oc.BgpConfigSet, limits config.Limits) (*Server, error) {
 	bgpServer := server.NewBgpServer(
 		server.LoggerOption(logging.NewGoBGPLogger(log.StandardLogger().GetLevel(), log.StandardLogger().Formatter)),
 	)
@@ -51,7 +53,7 @@ func New(configSet *oc.BgpConfigSet) (*Server, error) {
 		server:   bgpServer,
 		asn:      configSet.Global.Config.As,
 		routerID: configSet.Global.Config.RouterId,
-		feeds:    feed.Reader{},
+		feeds:    feed.Reader{Limits: limits},
 	}, nil
 }
 
@@ -139,6 +141,7 @@ func (s *Server) buildRouteTable(ctx context.Context, feeds []config.Feed, previ
 			"community":           community.String(),
 			"feed_count":          len(sources),
 			"prefixes_read":       result.Count,
+			"prefixes_dropped":    result.Dropped,
 			"prefixes_summarized": len(result.Prefixes),
 		}).Info("Prepared community routes")
 

@@ -12,7 +12,7 @@ The default, `-log-format logfmt`, writes the time in UTC, the level and the mes
 fields in alphabetical order:
 
 ```text
-time=2026-11-05T04:38:15Z level=info msg="Prepared community routes" community=64520:1200 feed_count=1 prefixes_read=4 prefixes_summarized=3
+time=2026-11-05T04:38:15Z level=info msg="Prepared community routes" community=64520:1200 feed_count=1 prefixes_dropped=0 prefixes_read=4 prefixes_summarized=3
 ```
 
 A value is quoted, Go style, when it contains a space, a tab, a newline, a quote or an `=`. Levels
@@ -23,7 +23,7 @@ written `warning` even though the flag value is `warn`.
 `msg`:
 
 ```json
-{"community":"64520:1200","feed_count":1,"level":"info","msg":"Prepared community routes","prefixes_read":4,"prefixes_summarized":3,"time":"2026-11-05T04:38:29Z"}
+{"community":"64520:1200","feed_count":1,"level":"info","msg":"Prepared community routes","prefixes_dropped":0,"prefixes_read":4,"prefixes_summarized":3,"time":"2026-11-05T04:38:29Z"}
 ```
 
 Lines from the embedded GoBGP server have `component=gobgp` and GoBGP's own messages and fields,
@@ -35,23 +35,26 @@ field names are lower-cased.
 | Message | Level | Fields |
 | --- | --- | --- |
 | `Starting blackhole-threats` | info | `tag_version`, `commit`, `build_date`, `go_version`, `go_os`, `go_arch`, `pid` |
-| `Loaded runtime configuration` | info | `config_path`, `run_mode`, `refresh_interval`, `configured_feeds`, `cli_feeds`, `total_feeds`, `peer_count`, `local_as`, `router_id`, `default_community` |
+| `Loaded runtime configuration` | info | `config_path`, `run_mode`, `refresh_interval`, `configured_feeds`, `cli_feeds`, `total_feeds`, `peer_count`, `local_as`, `router_id`, `default_community`, `min_ipv4_prefix_length`, `min_ipv6_prefix_length` |
 | `Started blackhole-threats` | info | |
 
 `tag_version` is the release tag the binary was built from, such as `v1.2.3` or `v1.2.3-rc.1`,
 or `unknown` when the build's version isn't a tag. The Debian package's binary is stamped with
 the version without its `v`, so it logs `tag_version=unknown`; `-version` shows the version it
 has. `run_mode` is `daemon`, or `oneshot` with `-once`. `configured_feeds` counts the feeds in
-the file, `cli_feeds` the ones from `-feed`, and `total_feeds` both.
+the file, `cli_feeds` the ones from `-feed`, and `total_feeds` both. `min_ipv4_prefix_length` and
+`min_ipv6_prefix_length` are the limits in force, from the config's `limits` section or the
+defaults of 8 and 16.
 
 ## Each refresh
 
 | Message | Level | Fields |
 | --- | --- | --- |
 | `Refresh signal received` | info | `signal` |
-| `Parsed threat feed` | info | `source`, `prefixes_read` |
+| `Dropped prefix shorter than the minimum length` | warning | `source`, `prefix`, `min_prefix_length` |
+| `Parsed threat feed` | info | `source`, `prefixes_read`, `prefixes_dropped` |
 | `Failed to read threat feed` | error | `source`, `error` |
-| `Prepared community routes` | info | `community`, `feed_count`, `prefixes_read`, `prefixes_summarized` |
+| `Prepared community routes` | info | `community`, `feed_count`, `prefixes_read`, `prefixes_dropped`, `prefixes_summarized` |
 | `Keeping previous community routes after feed errors` | warning | `community`, `feed_count`, `failed_feed_count`, `failed_feeds`, `carried_forward` |
 | `Refresh completed` | info | `announced`, `withdrawn`, `active_routes`, `duration_ms` |
 
@@ -60,8 +63,14 @@ the file, `cli_feeds` the ones from `-feed`, and `total_feeds` both.
 `Failed to read threat feed`, and each community then logs either `Prepared community routes`
 or `Keeping previous community routes after feed errors`.
 
+`Dropped prefix shorter than the minimum length` comes before a feed's `Parsed threat feed`, once
+for each prefix shorter than the limit for its family, with the limit as `min_prefix_length`.
+The same message is the backstop after summarising, with `sources`, the community's feeds, in
+place of `source`; summarising stops at the limits, so you shouldn't see that one.
+
 - `prefixes_read` is the number of prefixes taken from a feed, or from all of a community's
-  feeds, before summarising; `prefixes_summarized` is how many routes the community comes to after.
+  feeds, before summarising; `prefixes_dropped` is how many of them were shorter than the limits
+  and left out; `prefixes_summarized` is how many routes the community comes to after.
 - `failed_feeds` lists the sources that failed, and `carried_forward` how many routes the community
   kept from the previous refresh.
 - `announced` and `withdrawn` count the routes sent to GoBGP this refresh, `active_routes` the
@@ -92,7 +101,7 @@ Each of these is the last line before the daemon exits with code 1.
 | `Invalid log format` | `log_format`, `error` | `-log-format` isn't `logfmt` or `json` |
 | `Invalid log level` | `log_level`, `error` | `-log-level` isn't a level |
 | `Failed to load configuration` | `error` | The file can't be read or decoded, has an unknown key, a bad community or a bad neighbor port |
-| `Invalid configuration` | `error` | The ASN is 0, the router ID isn't IPv4, or a feed in the file is invalid |
+| `Invalid configuration` | `error` | The ASN is 0, the router ID isn't IPv4, a limit is out of range, or a feed in the file is invalid |
 | `Invalid feed configuration` | `error` | A `-feed` value is invalid |
 | `Refresh timer must be greater than zero` | `refresh_interval` | `-refresh-rate` is 0 or negative |
 | `Failed to start BGP server` | `error` | GoBGP couldn't start with the `gobgp` block |
