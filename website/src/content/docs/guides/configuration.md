@@ -108,9 +108,11 @@ or fail together; [Feeds and communities](/blackhole-threats/how-it-works/feeds/
 covers how to choose.
 
 :::caution[4-byte ASNs]
-The default community puts the local ASN in its first half, which only has room for 16 bits. With
-a local ASN above 65535 the default comes out wrong (AS 4200000000 gives `59904:666`), so give
-every feed an explicit community.
+The default community puts the local ASN in its first half, which only has room for 16 bits, so a
+local ASN above 65535 has no default. Give every feed its own community, such as the well-known
+BLACKHOLE community `65535:666` from RFC 7999 or values under a 16-bit ASN you use for policy. If a
+feed doesn't have one, the daemon refuses to start with `no default community`, and that includes
+any feed added with `-feed`, which can't set one.
 :::
 
 A feed that gives no prefixes, such as an empty response or an HTML error page served with a

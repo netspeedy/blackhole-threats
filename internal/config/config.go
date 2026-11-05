@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"math"
 	"net/netip"
 	"net/url"
 	"os"
@@ -23,6 +24,7 @@ var ErrUnsupportedFeedScheme = errors.New("unsupported feed scheme")
 var ErrInvalidNeighborPort = errors.New("invalid neighbor endpoint port")
 var ErrConflictingNeighborPort = errors.New("conflicting neighbor endpoint port")
 var ErrInvalidPrefixLimit = errors.New("invalid minimum prefix length")
+var ErrNoDefaultCommunity = errors.New("no default community")
 
 // The shortest prefixes announced when limits doesn't say otherwise. Nothing shorter than a /8 or
 // a /16 belongs in a blackhole feed, and a feed line such as 0.0.0.0/0 or ::/0 would otherwise
@@ -188,15 +190,10 @@ func (cfg File) Validate() error {
 		return err
 	}
 
-	for i, feed := range cfg.Feeds {
-		if err := ValidateFeed(feed); err != nil {
-			return fmt.Errorf("feed %d: %w", i+1, err)
-		}
-	}
-
-	return nil
+	return ValidateFeeds(cfg.Feeds, cfg.GoBGP.Global.Config.As)
 }
 
+// ValidateFeed checks a feed's URL. ValidateFeeds also checks that it has a community.
 func ValidateFeed(feed Feed) error {
 	source := strings.TrimSpace(feed.URL)
 	if source == "" {
@@ -216,16 +213,29 @@ func ValidateFeed(feed Feed) error {
 	}
 }
 
-func ValidateFeeds(feeds []Feed) error {
+// ValidateFeeds checks every feed's URL, and that every feed will have a community when the local
+// ASN is asn: one of its own, or the default if asn has one.
+func ValidateFeeds(feeds []Feed, asn uint32) error {
+	_, hasDefault := DefaultCommunity(asn)
 	for i, feed := range feeds {
 		if err := ValidateFeed(feed); err != nil {
 			return fmt.Errorf("feed %d: %w", i+1, err)
+		}
+		if feed.Community == 0 && !hasDefault {
+			return fmt.Errorf("feed %d: %w: %s has no community, and local AS %d is a 4-byte ASN, which doesn't fit in <ASN>:666; set community on the feed (a -feed flag can't)", i+1, ErrNoDefaultCommunity, feed.URL, asn)
 		}
 	}
 
 	return nil
 }
 
-func DefaultCommunity(asn uint32) Community {
-	return Community(asn<<16 | 666)
+// DefaultCommunity returns <asn>:666, the community a feed carries when it doesn't set one. A
+// standard community (RFC 1997) only has 16 bits for the ASN, so a 4-byte ASN has no default and
+// ok is false. Truncating it would announce some other network's community: AS 4200000000 would
+// come out as 59904:666.
+func DefaultCommunity(asn uint32) (community Community, ok bool) {
+	if asn > math.MaxUint16 {
+		return 0, false
+	}
+	return Community(asn<<16 | 666), true
 }

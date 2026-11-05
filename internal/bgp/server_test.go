@@ -2,6 +2,7 @@ package bgp
 
 import (
 	"context"
+	"errors"
 	"net/netip"
 	"os"
 	"path/filepath"
@@ -26,7 +27,7 @@ func (s stubFeedReader) ReadMany(_ context.Context, feeds ...config.Feed) feed.R
 func TestBuildRouteTableKeepsPreviousCommunityOnFeedFailure(t *testing.T) {
 	t.Parallel()
 
-	defaultCommunity := config.DefaultCommunity(64512)
+	defaultCommunity, _ := config.DefaultCommunity(64512)
 	otherCommunity := config.Community(64512<<16 | 777)
 
 	server := &Server{
@@ -159,5 +160,17 @@ func TestBuildRouteTableWithdrawsAnEmptyFeedThatAllowsIt(t *testing.T) {
 	next := server.buildRouteTable(context.Background(), []config.Feed{{URL: source, Community: community, AllowEmpty: true}}, previous)
 	if len(next) != 0 {
 		t.Fatalf("buildRouteTable() = %v, want the community's routes withdrawn", next)
+	}
+}
+
+// main refuses this config before Run, but Run checks again so a feed with no community can't
+// be announced with a truncated default.
+func TestRunRefusesAFeedWithNoCommunityWithA4ByteASN(t *testing.T) {
+	t.Parallel()
+
+	server := &Server{asn: 4200000000, routerID: "192.0.2.1", feeds: stubFeedReader{}}
+	err := server.Run(context.Background(), []config.Feed{{URL: "https://feeds.example.net/default.txt"}}, 2, nil, true)
+	if !errors.Is(err, config.ErrNoDefaultCommunity) {
+		t.Fatalf("Run() error = %v, want ErrNoDefaultCommunity", err)
 	}
 }

@@ -156,7 +156,9 @@ feeds:
 ```
 
 Each feed takes a community written as `<as>:<action>`, with both parts in the
-range 0-65535. Leave it out and the feed uses the default `<local ASN>:666`. A
+range 0-65535. Leave it out and the feed uses the default `<local ASN>:666`.
+With a 4-byte local ASN, above 65535, there's no default, so every feed needs
+its own community and blackhole-threats won't start until it has one. A
 local file path works as a feed URL. BGP ports default to 179 when omitted. The
 router ID has to be an IPv4 address even when some neighbors are IPv6. The
 example addresses come from documentation ranges, so replace them before you

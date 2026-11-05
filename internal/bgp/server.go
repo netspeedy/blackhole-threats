@@ -58,6 +58,12 @@ func New(configSet *oc.BgpConfigSet, limits config.Limits) (*Server, error) {
 }
 
 func (s *Server) Run(ctx context.Context, feeds []config.Feed, refreshInterval time.Duration, refreshSignals <-chan os.Signal, runOnce bool) error {
+	// main has already checked this, but a feed that ends up with no community must never reach
+	// buildRouteTable, so check again rather than rely on it.
+	if err := config.ValidateFeeds(feeds, s.asn); err != nil {
+		return err
+	}
+
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 
@@ -105,11 +111,13 @@ func (s *Server) Run(ctx context.Context, feeds []config.Feed, refreshInterval t
 }
 
 func (s *Server) buildRouteTable(ctx context.Context, feeds []config.Feed, previous map[string]routeState) map[string]routeState {
+	defaultCommunity, _ := config.DefaultCommunity(s.asn)
 	grouped := map[config.Community][]config.Feed{}
 	for _, source := range feeds {
 		community := source.Community
 		if community == 0 {
-			community = config.DefaultCommunity(s.asn)
+			// Run has refused feeds without a community when the local ASN has no default.
+			community = defaultCommunity
 		}
 		grouped[community] = append(grouped[community], source)
 	}

@@ -41,7 +41,8 @@ field names are lower-cased.
 `tag_version` is the release tag the binary was built from, such as `v1.2.3` or `v1.2.3-rc.1`,
 or `unknown` when the build's version isn't a tag. The Debian package's binary is stamped with
 the version without its `v`, so it logs `tag_version=unknown`; `-version` shows the version it
-has. `run_mode` is `daemon`, or `oneshot` with `-once`. `configured_feeds` counts the feeds in
+has. `run_mode` is `daemon`, or `oneshot` with `-once`. `default_community` is `<local ASN>:666`, or
+`none` when the local ASN is above 65535 and every feed has its own community. `configured_feeds` counts the feeds in
 the file, `cli_feeds` the ones from `-feed`, and `total_feeds` both. `min_ipv4_prefix_length` and
 `min_ipv6_prefix_length` are the limits in force, from the config's `limits` section or the
 defaults of 8 and 16.
@@ -104,8 +105,8 @@ Each of these is the last line before the daemon exits with code 1.
 | `Invalid log format` | `log_format`, `error` | `-log-format` isn't `logfmt` or `json` |
 | `Invalid log level` | `log_level`, `error` | `-log-level` isn't a level |
 | `Failed to load configuration` | `error` | The file can't be read or decoded, has an unknown key, a bad community or a bad neighbor port |
-| `Invalid configuration` | `error` | The ASN is 0, the router ID isn't IPv4, a limit is out of range, or a feed in the file is invalid |
-| `Invalid feed configuration` | `error` | A `-feed` value is invalid |
+| `Invalid configuration` | `error` | The ASN is 0, the router ID isn't IPv4, a limit is out of range, or a feed in the file is invalid or, with a 4-byte local ASN, has no community |
+| `Invalid feed configuration` | `error` | A `-feed` value is invalid, or the local ASN is a 4-byte one, which leaves `-feed` without a community |
 | `Refresh timer must be greater than zero` | `refresh_interval` | `-refresh-rate` is 0 or negative |
 | `Failed to start BGP server` | `error` | GoBGP couldn't start with the `gobgp` block |
 

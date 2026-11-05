@@ -47,10 +47,20 @@ func logStartup(cfgPath string, cfg config.File, configuredFeeds, extraFeeds int
 		"peer_count":             len(cfg.GoBGP.Neighbors),
 		"local_as":               cfg.GoBGP.Global.Config.As,
 		"router_id":              cfg.GoBGP.Global.Config.RouterId,
-		"default_community":      config.DefaultCommunity(cfg.GoBGP.Global.Config.As).String(),
+		"default_community":      defaultCommunityField(cfg.GoBGP.Global.Config.As),
 		"min_ipv4_prefix_length": cfg.Limits.MinIPv4(),
 		"min_ipv6_prefix_length": cfg.Limits.MinIPv6(),
 	}).Info("Loaded runtime configuration")
+}
+
+// defaultCommunityField is the default community for the startup log, or "none" for a 4-byte ASN,
+// which doesn't have one.
+func defaultCommunityField(asn uint32) string {
+	community, ok := config.DefaultCommunity(asn)
+	if !ok {
+		return "none"
+	}
+	return community.String()
 }
 
 // cliFlags holds the command-line flags' values.
@@ -120,7 +130,7 @@ func main() {
 
 	feeds := append([]config.Feed{}, cfg.Feeds...)
 	feeds = append(feeds, flags.extraFeeds...)
-	if err := config.ValidateFeeds(feeds); err != nil {
+	if err := config.ValidateFeeds(feeds, cfg.GoBGP.Global.Config.As); err != nil {
 		log.WithError(err).Fatal("Invalid feed configuration")
 	}
 	if flags.refreshRate <= 0 {
