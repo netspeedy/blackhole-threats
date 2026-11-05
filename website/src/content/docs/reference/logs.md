@@ -39,9 +39,10 @@ field names are lower-cased.
 | `Started blackhole-threats` | info | |
 
 `tag_version` is the release tag the binary was built from, such as `v1.2.3` or `v1.2.3-rc.1`,
-or `unknown` when the build's version isn't a tag. The Debian package's binary is stamped with
-the version without its `v`, so it logs `tag_version=unknown`; `-version` shows the version it
-has. `run_mode` is `daemon`, or `oneshot` with `-once`. `default_community` is `<local ASN>:666`, or
+or `unknown` when the build's version isn't a release. A build from the Debian source package is
+stamped with the package's upstream version instead, `1.2.3` or `1.2.3~rc.1`, and logs it as the
+tag it came from, `v1.2.3` or `v1.2.3-rc.1`. `-version` prints the version exactly as it was
+stamped. `run_mode` is `daemon`, or `oneshot` with `-once`. `default_community` is `<local ASN>:666`, or
 `none` when the local ASN is above 65535 and every feed has its own community. `configured_feeds` counts the feeds in
 the file, `cli_feeds` the ones from `-feed`, and `total_feeds` both. `min_ipv4_prefix_length` and
 `min_ipv6_prefix_length` are the limits in force, from the config's `limits` section or the
