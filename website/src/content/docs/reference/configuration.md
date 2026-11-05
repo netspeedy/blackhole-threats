@@ -70,9 +70,10 @@ A list, one entry per feed.
 | --- | --- | --- | --- |
 | `url` | string | none, required | A file path, or an `http://` or `https://` URL. A relative path is read from the working directory. |
 | `community` | string | `<local ASN>:666` | The BGP community the feed's routes carry, written `<as>:<value>` with each part from 0 to 65535. |
+| `allow_empty` | boolean | `false` | Whether the feed may give no prefixes. Without it, a feed that gives none counts as failed and its community keeps its previous routes; with it, the routes are withdrawn. |
 
 `community: 0:0` means the same as leaving it out. Feeds added with `-feed` have no community and
-always use the default. For a local ASN above 65535 the default doesn't fit (only the ASN's low
+always use the default, and can't set `allow_empty`. For a local ASN above 65535 the default doesn't fit (only the ASN's low
 16 bits are kept, so AS 4200000000 gives `59904:666`), so set `community` on every feed.
 
 ## limits

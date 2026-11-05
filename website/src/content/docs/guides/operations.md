@@ -79,8 +79,9 @@ community added together.
 - The same feed logs `Failed to read threat feed` on refresh after refresh. Its community is
   stuck on old routes until it's fixed.
 - `Keeping previous community routes after feed errors` keeps appearing for one community.
-- A feed's `prefixes_read` drops to 0, or far below its usual number. An empty or broken response
-  that isn't an error withdraws that community's routes rather than keeping them.
+- A feed's `prefixes_read` falls far below its usual number. A feed that gives no prefixes at all
+  fails and keeps its old routes, but one that gives a handful where it used to give thousands is
+  taken at its word.
 - `active_routes` jumps or falls sharply after a feed or config change.
 - `Dropped prefix shorter than the minimum length` from a feed that doesn't usually list such
   broad prefixes. Something upstream has probably gone wrong with it.

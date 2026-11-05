@@ -391,3 +391,33 @@ func TestValidateRejectsOutOfRangeLimits(t *testing.T) {
 		}
 	}
 }
+
+func TestLoadReadsAllowEmpty(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "blackhole-threats.yaml")
+	content := []byte(`
+gobgp:
+  global:
+    config:
+      as: 64512
+      routerid: "192.0.2.1"
+feeds:
+  - url: /var/lib/blackhole-threats/local-blocklist.txt
+    community: 64512:1200
+    allow_empty: true
+  - url: https://example.com/feed.txt
+`)
+	if err := os.WriteFile(path, content, 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if !cfg.Feeds[0].AllowEmpty || cfg.Feeds[1].AllowEmpty {
+		t.Fatalf("allow_empty = %v and %v, want true and false", cfg.Feeds[0].AllowEmpty, cfg.Feeds[1].AllowEmpty)
+	}
+}

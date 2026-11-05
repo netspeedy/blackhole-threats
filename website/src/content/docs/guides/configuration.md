@@ -113,8 +113,21 @@ a local ASN above 65535 the default comes out wrong (AS 4200000000 gives `59904:
 every feed an explicit community.
 :::
 
+A feed that gives no prefixes, such as an empty response or an HTML error page served with a
+200, counts as failed, so its community keeps the routes it had. If a feed can legitimately be
+empty, such as a local list you clear when there's nothing to block, say so:
+
+```yaml
+feeds:
+  - url: /var/lib/blackhole-threats/local-blocklist.txt
+    community: 64520:1200
+    allow_empty: true
+```
+
+Then an empty read succeeds and withdraws the feed's routes.
+
 You can add feeds without editing the file with `-feed`, which you can repeat. Those always use
-the default community.
+the default community and can't set `allow_empty`.
 
 ## Limits
 

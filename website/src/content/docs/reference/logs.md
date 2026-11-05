@@ -71,6 +71,9 @@ place of `source`; summarising stops at the limits, so you shouldn't see that on
 - `prefixes_read` is the number of prefixes taken from a feed, or from all of a community's
   feeds, before summarising; `prefixes_dropped` is how many of them were shorter than the limits
   and left out; `prefixes_summarized` is how many routes the community comes to after.
+- `Failed to read threat feed`'s `error` is why: a file or HTTP error, a status other than 200, a
+  line over 1 MiB, JSON that doesn't parse, or `no prefixes in feed:` followed by what was read
+  instead, such as `the response was empty`.
 - `failed_feeds` lists the sources that failed, and `carried_forward` how many routes the community
   kept from the previous refresh.
 - `announced` and `withdrawn` count the routes sent to GoBGP this refresh, `active_routes` the

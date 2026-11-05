@@ -6,7 +6,8 @@ description: How blackhole-threats decides a feed is text or JSON, and exactly w
 Every feed is read as either plain text or JSON. Either way, what comes out is a list of IPv4 and
 IPv6 prefixes. A bare address becomes a host route, `/32` for IPv4 and `/128` for IPv6, and
 every prefix is masked to its network boundary, so `192.0.2.77/24` is read as `192.0.2.0/24`.
-Values that aren't addresses or prefixes are skipped without an error.
+Values that aren't addresses or prefixes are skipped without an error, but a feed that gives no
+prefixes at all fails, unless it sets `allow_empty`.
 
 A prefix shorter than the limits, `/8` for IPv4 and `/16` for IPv6 unless the config's `limits`
 section says otherwise, is dropped with a warning after it's read, so a feed that lists
@@ -84,7 +85,7 @@ line at the end of Spamhaus's DROP files is passed over:
 The fields have to be strings. An entry that isn't an object (`["192.0.2.1"]`, for instance), a
 field that's a number, or JSON that doesn't parse fails the whole feed. A single object that
 wraps the list, such as `{"data": [...]}`, is read as one object with none of the four fields, so
-it gives no prefixes and no error.
+it gives no prefixes and the feed fails with `no prefixes in feed`.
 
 ## Local files and HTTP
 
