@@ -63,24 +63,23 @@ jobs:
 
       - name: Create and push stable tag
         env:
-          DEFAULT_GH_TOKEN: ${{ github.token }}
           RELEASE_AUTOMATION_TOKEN: ${{ secrets.RELEASE_AUTOMATION_TOKEN }}
         run: |
           set -euo pipefail
 
-          push_token="${RELEASE_AUTOMATION_TOKEN:-${DEFAULT_GH_TOKEN}}"
+          # A tag pushed with GITHUB_TOKEN starts no workflows, so the publish runs this waits for
+          # would never begin.
+          if [ -z "${RELEASE_AUTOMATION_TOKEN:-}" ]; then
+            echo "RELEASE_AUTOMATION_TOKEN is required to push the stable tag so its publish workflows run." >&2
+            exit 1
+          fi
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -a "${{ steps.promote.outputs.stable_tag }}" "${{ steps.promote.outputs.release_sha }}" \
             -m "Promote ${{ steps.promote.outputs.prerelease_tag }} to ${{ steps.promote.outputs.stable_tag }}"
-          if ! git push "https://x-access-token:${push_token}@github.com/${GITHUB_REPOSITORY}.git" \
-            "refs/tags/${{ steps.promote.outputs.stable_tag }}" 2>push.err; then
-            cat push.err >&2
-            if grep -Fq "without 'workflows' permission" push.err && [ -z "${RELEASE_AUTOMATION_TOKEN:-}" ]; then
-              echo "Add a RELEASE_AUTOMATION_TOKEN secret with repository contents and workflows write access to automate release tags for commits that update workflow files." >&2
-            fi
-            exit 1
-          fi
+          git push "https://x-access-token:${RELEASE_AUTOMATION_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            "refs/tags/${{ steps.promote.outputs.stable_tag }}"
 
       - name: Wait for stable publish workflows
         env:
