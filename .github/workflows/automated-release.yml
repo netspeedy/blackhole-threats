@@ -77,6 +77,12 @@ jobs:
           fi
           echo "stable_tag=${stable_tag}" >> "${GITHUB_OUTPUT}"
           echo "candidate_tag=${stable_tag}-rc.${rc_number}" >> "${GITHUB_OUTPUT}"
+      # Updates from Dependabot, Renovate and this repository's workflows go all the way to stable.
+      # A release-bearing change a person merged stops at the candidate, for someone to promote.
+      - name: Check whether the release is only automated updates
+        id: authors
+        if: steps.existing.outputs.release_required == 'true' && steps.release.outputs.release_required == 'true'
+        run: bash scripts/automated-only.sh "${{ steps.release.outputs.previous_tag }}" "${RELEASE_SHA}" >> "${GITHUB_OUTPUT}"
 
       - name: Update Debian changelog on main
         id: changelog
@@ -165,7 +171,7 @@ jobs:
 
       # The candidate's publish workflows passed, so the same commit becomes the stable release.
       - name: Create and push stable tag
-        if: steps.existing.outputs.release_required == 'true' && steps.release.outputs.release_required == 'true' && steps.changelog.outputs.updated != 'true'
+        if: steps.existing.outputs.release_required == 'true' && steps.release.outputs.release_required == 'true' && steps.changelog.outputs.updated != 'true' && steps.authors.outputs.automated_only == 'true'
         env:
           RELEASE_AUTOMATION_TOKEN: ${{ secrets.RELEASE_AUTOMATION_TOKEN }}
         run: |
@@ -184,7 +190,7 @@ jobs:
             "refs/tags/${{ steps.candidate.outputs.stable_tag }}"
 
       - name: Wait for stable publish workflows
-        if: steps.existing.outputs.release_required == 'true' && steps.release.outputs.release_required == 'true' && steps.changelog.outputs.updated != 'true'
+        if: steps.existing.outputs.release_required == 'true' && steps.release.outputs.release_required == 'true' && steps.changelog.outputs.updated != 'true' && steps.authors.outputs.automated_only == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -214,6 +220,13 @@ jobs:
             exit 0
           fi
 
+          if [ "${{ steps.authors.outputs.automated_only }}" != "true" ]; then
+            printf "Created release candidate \`%s\` for \`%s\` and validated its publish path. It includes %s release-bearing change(s) that people merged, so promote it with the \`Promote Release Candidate\` workflow when it is ready.\n" \
+              "${{ steps.candidate.outputs.candidate_tag }}" \
+              "${{ steps.candidate.outputs.stable_tag }}" \
+              "${{ steps.authors.outputs.human_commits }}" >> "${GITHUB_STEP_SUMMARY}"
+            exit 0
+          fi
           printf "Created automated release candidate \`%s\`, validated the prerelease publish path, and promoted it to stable \`%s\` (%s bump from \`%s\`).\n" \
             "${{ steps.candidate.outputs.candidate_tag }}" \
             "${{ steps.candidate.outputs.stable_tag }}" \
