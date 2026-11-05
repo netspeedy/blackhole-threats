@@ -193,7 +193,8 @@ Current behavior:
   remaining repository requirements are satisfied
 - the original PR title is preserved as the squash commit subject
 - `deps:` and `container:` updates remain release-bearing after merge
-- `ci:` and `chore:` updates remain non-release-bearing
+- `ci:` and `chore:` updates remain non-release-bearing; the website's npm
+  updates are titled `chore:`, since the site isn't part of the package
 - patch, minor, and major version updates are all eligible for merge after
   validation
 - the repo-scoped `GITHUB_TOKEN` is the default merge credential, and an
