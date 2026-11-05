@@ -202,15 +202,17 @@ Current behavior:
   workflow enables GitHub auto-merge so the PR can land as soon as the
   remaining repository requirements are satisfied
 - the original PR title is preserved as the squash commit subject
-- `deps:` and `container:` updates remain release-bearing after merge
+- `deps:` and `container:` updates remain release-bearing after merge; the pin
+  refresh is titled `container:` too, since everything it changes is in the
+  published image
 - `ci:` and `chore:` updates remain non-release-bearing; the website's npm
   updates are titled `chore:`, since the site isn't part of the package
 - patch, minor, and major version updates are all eligible for merge after
   validation
-- the repo-scoped `GITHUB_TOKEN` is the default merge credential, and an
-  optional `AUTOMATION_AUTOMERGE_TOKEN` can be added if workflow-file
-  automation PRs also need to merge automatically under GitHub's stricter
-  workflow-permission rules
+- merges use the `AUTOMATION_AUTOMERGE_TOKEN` organisation secret. Without it
+  the workflow falls back to the repo-scoped `GITHUB_TOKEN`, whose merges start
+  no push workflows, so `main` isn't validated and nothing releases, and which
+  can't merge PRs that change workflow files
 - the release workflows publish directly to the tagged GitHub Release rather
   than creating a temporary draft shell, and they clean up stale orphan
   `untagged-*` drafts for the same tag before publishing
