@@ -94,7 +94,9 @@ as their own `v*-rc.*` tag. The image runs on Debian trixie with the daemon as
 its main process, logs structured lines to stdout, and reads its configuration
 from `/config`. On first start it puts the sample config there for you to edit.
 Because the daemon is process 1, `docker kill --signal=SIGUSR1 blackhole-threats`
-refreshes the feeds and `docker stop` shuts it down cleanly.
+refreshes the feeds and `docker stop` shuts it down cleanly. Flags after the
+image name go to the daemon, so adding `-check-config` to a `docker run --rm`
+checks a config and exits.
 
 ### From source
 

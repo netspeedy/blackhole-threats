@@ -59,5 +59,6 @@ EXPOSE 179
 
 # The entrypoint execs the daemon, so the daemon is PID 1 and gets the signals docker sends:
 # SIGUSR1 from docker kill refreshes the feeds, and SIGTERM from docker stop shuts it down
-# cleanly. Don't put an init or supervisor in front of it without keeping that true.
+# cleanly. Don't put an init or supervisor in front of it without keeping that true. There's no
+# CMD: arguments after the image name are flags, and the entrypoint passes them to the daemon.
 ENTRYPOINT ["/usr/local/bin/blackhole-threats-entrypoint"]

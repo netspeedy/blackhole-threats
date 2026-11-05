@@ -128,6 +128,14 @@ jobs:
             echo "expected missing config path to fail" >&2
             exit 1
           fi
+          # Arguments after the image name go to the daemon, after BLACKHOLE_THREATS_EXTRA_OPTS, so
+          # the later -log-format wins. An image that drops them runs the daemon instead, which
+          # never exits, hence the timeouts.
+          timeout 60 docker run --rm blackhole-threats:test -version | grep -E '^blackhole-threats '
+          timeout 60 docker run --rm \
+            -v "$PWD/.tmp-config:/config" \
+            -e BLACKHOLE_THREATS_EXTRA_OPTS="-log-format bogus" \
+            blackhole-threats:test -log-format logfmt -check-config | grep -F 'configuration OK'
           rm -rf .tmp-config
 
       - name: Validate published platforms

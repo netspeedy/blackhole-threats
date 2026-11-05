@@ -59,7 +59,7 @@ placeholder, put your config there before the first run.
 | Variable | Default | What it does |
 | --- | --- | --- |
 | `BLACKHOLE_THREATS_CONF` | `/config/blackhole-threats.yaml` | The config file to run with. If you point it anywhere else and the file isn't there, the container logs `Configuration file not found` and exits instead of writing a placeholder. |
-| `BLACKHOLE_THREATS_EXTRA_OPTS` | empty | More flags, separated by spaces, added after `-conf`. |
+| `BLACKHOLE_THREATS_EXTRA_OPTS` | empty | More flags, separated by spaces, added after `-conf` and before any [given after the image name](#flags-after-the-image-name). |
 
 For example, JSON logs, debug output and a 15 minute refresh:
 
@@ -74,6 +74,29 @@ docker run -d \
 
 `HTTPS_PROXY`, `HTTP_PROXY` and `NO_PROXY` pass straight through to the daemon if the feeds need a
 proxy.
+
+## Flags after the image name
+
+Anything after the image name goes to the daemon as flags, after `-conf` and
+`BLACKHOLE_THREATS_EXTRA_OPTS`. That's handy for one-off runs, such as checking a config before
+you restart the container with it:
+
+```bash
+docker run --rm \
+  -v "$PWD/config:/config" \
+  ghcr.io/netspeedy/blackhole-threats:latest -check-config
+```
+
+It prints `configuration OK` and the number of feeds, then exits. `-once` runs one refresh and
+exits, and `-version` prints the version. If a flag is set both here and in
+`BLACKHOLE_THREATS_EXTRA_OPTS`, the one after the image name wins, because the daemon takes the
+last value it's given. Every flag is on the [CLI page](/blackhole-threats/reference/cli/).
+
+Set a different config path with `BLACKHOLE_THREATS_CONF`, not `-conf`. Before the daemon starts,
+the entrypoint looks for the config at that path, and writes the placeholder there if it's the
+default path and nothing's there, even for `-version`. Older images ignored everything after the
+image name and started the daemon as usual, so on those put the flags in
+`BLACKHOLE_THREATS_EXTRA_OPTS`.
 
 ## Refresh, restart and logs
 

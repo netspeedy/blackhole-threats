@@ -62,10 +62,9 @@ CONF
     fi
 fi
 
-set -- /usr/sbin/blackhole-threats -conf "$CONF_PATH"
-if [ -n "$EXTRA_OPTS" ]; then
-    # shellcheck disable=SC2086
-    set -- "$@" $EXTRA_OPTS
-fi
+# Arguments given after the image name, as in docker run <image> -once, go to the daemon last, so
+# they win over BLACKHOLE_THREATS_EXTRA_OPTS when both set the same flag.
+# shellcheck disable=SC2086
+set -- /usr/sbin/blackhole-threats -conf "$CONF_PATH" $EXTRA_OPTS "$@"
 
 exec "$@"

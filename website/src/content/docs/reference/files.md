@@ -29,7 +29,7 @@ the journal under the identifier `blackhole-threats`.
 | Path | What it is |
 | --- | --- |
 | `/usr/sbin/blackhole-threats` | The daemon |
-| `/usr/local/bin/blackhole-threats-entrypoint` | The command the image runs, which writes the placeholder config if needed and starts the daemon |
+| `/usr/local/bin/blackhole-threats-entrypoint` | The command the image runs, which writes the placeholder config if needed and starts the daemon with `-conf`, then `BLACKHOLE_THREATS_EXTRA_OPTS`, then any arguments after the image name |
 | `/config` | Mount your config directory here |
 | `/config/blackhole-threats.yaml` | The default config path |
 
