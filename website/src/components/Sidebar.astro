@@ -1,0 +1,31 @@
+---
+// Starlight's sidebar, with each group in a wrapper that carries its colour and icon from
+// src/lib/sections.ts, so the tiles follow the group rather than its position. routeData.ts has
+// already narrowed the sidebar to the current tab.
+import MobileMenuFooter from "virtual:starlight/components/MobileMenuFooter";
+import SidebarPersister from "@astrojs/starlight/components/SidebarPersister.astro";
+import SidebarSublist from "@astrojs/starlight/components/SidebarSublist.astro";
+import { iconMask, sections } from "../lib/sections";
+
+const { sidebar } = Astro.locals.starlightRoute;
+const style = (label: string) => {
+  const section = sections.find((candidate) => candidate.label === label);
+  if (!section) return undefined;
+  const hue = `--ns-${section.hue}`;
+  return `--cc: var(${hue}); --cb: var(${hue}-bg); --cl: var(${hue}-line); --ci: var(${hue}-ink); --cf: var(${hue}-fill); --icon: ${iconMask(section)}`;
+};
+---
+
+<SidebarPersister>
+  {
+    sidebar.map((entry) => (
+      <div class="ns-group" style={entry.type === "group" ? style(entry.label) : undefined}>
+        <SidebarSublist sublist={[entry]} />
+      </div>
+    ))
+  }
+</SidebarPersister>
+
+<div class="md:sl-hidden">
+  <MobileMenuFooter />
+</div>

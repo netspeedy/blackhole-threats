@@ -1,0 +1,79 @@
+---
+// Link cards into the docs, each in the colour of the section it lands in.
+import { sectionOfHref } from "../lib/sections";
+import { docsHref } from "../lib/site";
+import SectionIcon from "./SectionIcon.astro";
+
+interface Props {
+  links: { title: string; href: string; description: string }[];
+}
+
+const sidebar = Astro.locals.fullSidebar;
+const cards = Astro.props.links.map((link) => {
+  const href = docsHref(link.href);
+  const section = sectionOfHref(sidebar, href);
+  if (!section) throw new Error(`NextSteps: ${link.href} isn't a page in the sidebar`);
+  return { ...link, href, section };
+});
+---
+
+<div class="ns-next not-content">
+  {
+    cards.map(({ title, href, description, section }) => (
+      <a href={href} style={`--cc: var(--ns-${section.hue}); --cb: var(--ns-${section.hue}-bg)`}>
+        <span class="ns-next-section">
+          <SectionIcon section={section} />
+          {section.label}
+        </span>
+        <span class="ns-next-title">{title}</span>
+        <span class="ns-next-text">{description}</span>
+      </a>
+    ))
+  }
+</div>
+
+<style>
+  .ns-next {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr));
+    gap: 0.875rem;
+  }
+  a {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 1rem 1.125rem;
+    border: 1px solid var(--sl-color-hairline-light);
+    border-radius: 12px;
+    background:
+      linear-gradient(135deg, var(--cb), transparent 60%),
+      var(--sl-color-black);
+    text-decoration: none;
+  }
+  a:hover {
+    border-color: var(--cc);
+  }
+  .ns-next-section {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: var(--sl-text-xs);
+    font-weight: 600;
+    color: var(--cc);
+  }
+  .ns-next-title {
+    margin-top: 0.375rem;
+    font-size: var(--sl-text-base);
+    font-weight: 650;
+    color: var(--sl-color-white);
+  }
+  .ns-next-title::after {
+    content: " →";
+    color: var(--cc);
+  }
+  .ns-next-text {
+    font-size: var(--sl-text-sm);
+    line-height: 1.5;
+    color: var(--sl-color-gray-3);
+  }
+</style>

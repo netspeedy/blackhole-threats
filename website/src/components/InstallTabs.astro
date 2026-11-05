@@ -1,0 +1,84 @@
+---
+import { Code, TabItem, Tabs } from "@astrojs/starlight/components";
+import { links, release } from "../lib/site";
+
+const pinned = release.tagged ? release.version : "v1.2.3";
+const image = `${links.image}:${release.tagged ? release.version : "latest"}`;
+const apt = `sudo install -d -m 0755 /etc/apt/keyrings
+curl -fsSL ${links.aptKey} \\
+  | sudo tee /etc/apt/keyrings/blackhole-threats-archive-keyring.gpg >/dev/null
+
+sudo tee /etc/apt/sources.list.d/blackhole-threats.sources >/dev/null <<'EOF'
+Types: deb deb-src
+URIs: ${links.aptUrl}
+Suites: stable
+Components: main
+Signed-By: /etc/apt/keyrings/blackhole-threats-archive-keyring.gpg
+EOF
+
+sudo apt update && sudo apt install blackhole-threats`;
+const docker = `docker run -d \\
+  -p 179:179 \\
+  -v "$PWD/config:/config" \\
+  --name blackhole-threats \\
+  ${image}`;
+const archive = `curl -fsSLO ${links.releases}/download/${pinned}/blackhole-threats-linux-amd64.tar.gz
+curl -fsSLO ${links.releases}/download/${pinned}/sha256sums.txt
+sha256sum -c --ignore-missing sha256sums.txt
+tar -xzf blackhole-threats-linux-amd64.tar.gz
+sudo install -m 0755 blackhole-threats-linux-amd64 /usr/local/sbin/blackhole-threats`;
+const source = `git clone ${links.repo}.git
+cd blackhole-threats
+make build`;
+---
+
+<Tabs syncKey="install">
+  <TabItem label="Debian / Ubuntu">
+    <Code lang="bash" code={apt} />
+    <p class="ns-note">
+      {
+        release.aptFingerprint ? (
+          <>
+            The repository is signed with <code>{release.aptFingerprint}</code>.
+          </>
+        ) : (
+          <>
+            Check the key against the <a href={links.aptKeyFingerprint}>published fingerprint</a> before you
+            trust it.
+          </>
+        )
+      }{" "}
+      The package installs a systemd unit and starts it.
+    </p>
+  </TabItem>
+  <TabItem label="Docker">
+    <Code lang="bash" code={docker} />
+    <p class="ns-note">
+      <code>linux/amd64</code> and <code>linux/arm64</code> on GHCR. The first start writes a sample config to
+      <code>./config</code> for you to edit.
+    </p>
+  </TabItem>
+  <TabItem label="Release archive">
+    <Code lang="bash" code={archive} />
+    <p class="ns-note">
+      Archives for <code>amd64</code>, <code>arm64</code> and <code>arm</code>, each holding one static binary.
+    </p>
+  </TabItem>
+  <TabItem label="From source">
+    <Code lang="bash" code={source} />
+    <p class="ns-note">Needs Go at the version in <code>go.mod</code> or newer. The binary lands in <code>dist/</code>.</p>
+  </TabItem>
+</Tabs>
+
+<style>
+  .ns-note {
+    margin-top: 0.75rem;
+    font-size: var(--sl-text-sm);
+    color: var(--sl-color-gray-3);
+  }
+  .ns-note code {
+    font-size: 0.92em;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+</style>

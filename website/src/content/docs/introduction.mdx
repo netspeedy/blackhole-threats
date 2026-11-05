@@ -1,0 +1,76 @@
+---
+title: Introduction
+description: What blackhole-threats does, what it doesn't, and how one refresh turns feeds into BGP routes.
+---
+
+import { Steps } from "@astrojs/starlight/components";
+import NextSteps from "../../components/NextSteps.astro";
+
+blackhole-threats turns threat feeds into remotely triggered blackhole (RTBH) routes. It reads
+local files and HTTP(S) feeds in plain text, JSON, JSONL or NDJSON, pulls out the IPv4 and IPv6
+prefixes, summarises overlapping networks and announces the result to your BGP peers with a
+community. Your routers match that community and route the traffic to a blackhole.
+
+It's one Go binary with [GoBGP](https://github.com/osrg/gobgp) built in, so there's no separate
+BGP daemon to run beside it. One YAML file holds both the GoBGP settings and the list of feeds,
+and every feed is tagged with the community its routes carry. A feed with no community gets
+`<local ASN>:666`.
+
+## What it doesn't do
+
+blackhole-threats announces routes; it doesn't drop anything itself. What happens to the traffic
+is up to the policy on your routers, and [Router policy](/blackhole-threats/guides/router-policy/)
+has starting points for RouterOS. It does nothing with routes its peers send it, and it keeps no
+state on disk: the routes it announces live in memory and are rebuilt from the feeds when it
+starts.
+
+It doesn't vet what the feeds say either. Whatever valid prefix a feed lists is announced,
+including a very short one, so only use feeds you trust and keep each one under its own
+community.
+
+## How a refresh works
+
+The daemon refreshes as soon as it starts, then every two hours by default, or straight away when
+you send it `SIGUSR1`. Each refresh does the same thing:
+
+<Steps>
+
+1. It groups the feeds by community. Feeds that share a community are read together and
+   succeed or fail together.
+
+2. It reads every feed in a group at the same time, takes one prefix from each line of a text
+   feed or each object of a JSON feed, and turns bare addresses into `/32` or `/128` host routes.
+
+3. It summarises each group: duplicates and prefixes inside a broader one go, and sibling
+   prefixes merge into their parent. Two `/25`s that make up a `/24` become the `/24`.
+
+4. If any feed in a group failed, it keeps the routes that group had after the last refresh
+   instead of building new ones.
+
+5. It compares the new route table with what it's announcing, withdraws the routes that are
+   gone or whose communities changed, and announces the new and changed ones. Unchanged routes
+   aren't sent again.
+
+</Steps>
+
+[How it works](/blackhole-threats/how-it-works/) goes through each step with the log lines it
+writes.
+
+## Where it ships from
+
+Everything is built and published from the repository: release archives for Linux `amd64`,
+`arm64` and `arm`, Debian packages for `amd64`, `arm64` and `armhf` in a signed APT repository,
+and a container image on GHCR for `linux/amd64` and `linux/arm64`. The project started as
+[ebarkie/blackhole-threats](https://github.com/ebarkie/blackhole-threats) by Eric Barkie, which
+established the idea of advertising threat-feed routes with GoBGP.
+
+## Where next
+
+<NextSteps
+  links={[
+    { title: "Quickstart", href: "/blackhole-threats/quickstart/", description: "Build it, write a lab config and run one refresh against a local feed." },
+    { title: "Installation", href: "/blackhole-threats/installation/", description: "The APT repository, the container image, release archives and source builds." },
+    { title: "Feeds and communities", href: "/blackhole-threats/how-it-works/feeds/", description: "How feeds are read, grouped, summarised and kept when they fail." },
+    { title: "Config keys", href: "/blackhole-threats/reference/configuration/", description: "Every key the YAML file takes, and what it rejects." },
+  ]}
+/>

@@ -17,6 +17,9 @@
 .tmp-config/
 
 # Website build outputs
+/website/.astro/
+/website/.captures/
+/website/.test/
 /website/dist/
 /website/node_modules/
 

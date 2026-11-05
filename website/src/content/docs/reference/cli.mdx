@@ -1,0 +1,77 @@
+---
+title: CLI
+description: Every blackhole-threats flag, with its default.
+---
+
+import FlagTable from "../../../components/FlagTable.astro";
+
+{/*
+  cmd/blackhole-threats's TestCLIReferenceCoversEveryFlag fails when a flag is missing here, or
+  when this page lists one the daemon doesn't take, so add new flags to the right group below when
+  you add them to the CLI.
+*/}
+
+export const config = [
+  { flag: "-conf", arg: "PATH", default: "blackhole-threats.yaml", description: "The YAML config file. A relative path is read from the working directory." },
+  { flag: "-check-config", description: "Load and validate the config, the feeds and the flags, print `configuration OK: N feed(s)` and exit without starting BGP." },
+  { flag: "-feed", arg: "SOURCE", repeatable: true, description: "Add a feed, as a file path or an `http://` or `https://` URL, to the ones in the config. It always uses the default community, `<local ASN>:666`." },
+];
+
+export const running = [
+  { flag: "-once", description: "Run one refresh, then stop BGP and exit. It doesn't wait for sessions to come up." },
+  { flag: "-refresh-rate", arg: "DURATION", default: "2h", description: "Time between refreshes, as a Go duration such as `30m` or `1h30m`. Must be more than zero." },
+];
+
+export const logging = [
+  { flag: "-log-format", arg: "FORMAT", default: "logfmt", description: "`logfmt` for `key=value` lines or `json` for one JSON object per line." },
+  { flag: "-log-level", arg: "LEVEL", default: "info", description: "`panic`, `fatal`, `error`, `warn`, `info`, `debug` or `trace`." },
+  { flag: "-debug", description: "Log at `debug`, whatever `-log-level` says." },
+];
+
+export const info = [
+  { flag: "-version", description: "Print the version, the commit and the build date, then exit." },
+];
+
+## Usage
+
+```bash
+blackhole-threats [-conf PATH] [-feed SOURCE]... [-check-config | -once] [flags]
+blackhole-threats -version
+```
+
+Flags take one dash, as in the man page, though Go also accepts two (`--conf`). A value can follow
+the flag after a space or an equals sign: `-refresh-rate 30m` or `-refresh-rate=30m`. A boolean
+flag is on when it's given; `-once=false` turns it off again. Without `-conf` the daemon reads
+`blackhole-threats.yaml` from the working directory.
+
+## Config and feeds
+
+<FlagTable flags={config} />
+
+## Running
+
+<FlagTable flags={running} />
+
+With neither `-check-config` nor `-once` the daemon runs until it's stopped, refreshing on the
+timer and on `SIGUSR1`. `-check-config` wins if you give both.
+
+## Logging
+
+<FlagTable flags={logging} />
+
+`-log-level warn` writes warnings as `level=warning`. Both flags are checked before the config is
+loaded, so a bad value stops the daemon before anything else.
+
+## Information
+
+<FlagTable flags={info} />
+
+`-version` prints three lines: `blackhole-threats` and the version, then `commit:` and `built:`
+with the commit and the build date. A release build shows its tag, such as `v1.2.3`; a source
+build shows `git describe` output for the checkout. The Debian package's binary shows the
+package's upstream version without the `v`, such as `1.2.3`, and `commit: debian`.
+
+`-h` or `-help` prints the flags and their defaults to standard error and exits with code 0. An
+unknown flag or a value that won't parse, such as `-refresh-rate soon`, prints the same list after
+the error and exits with code 2. [Signals and exit codes](/blackhole-threats/reference/signals-and-exit-codes/)
+has the rest.

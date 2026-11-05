@@ -28,12 +28,48 @@ automation.
   workflow files.
 - Keep Debian packaging metadata in `debian/`.
 - Keep release and repository automation scripts in `scripts/`.
-- Keep architecture and design notes in `docs/`.
-- Keep the GitHub Pages landing site in `website/`; treat it as
-  the public frontend for the signed APT repository rather than as a throwaway
-  marketing stub. Keep it out of `.github/`: Dependabot stopped being able to
-  open npm pull requests for manifests under `.github/` in June 2026 (its
-  create-PR call is rejected as "invalid or unauthorized changes").
+- Treat `website/` as a first-party release surface, not a throwaway demo. It
+  is the blackhole-threats documentation, built with Astro and Starlight, and
+  the front of the signed APT repository, which shares its Pages root. The
+  pages are Markdown and MDX in `website/src/content/docs`.
+- User-facing documentation lives in the site, not in `docs/`. The files in
+  `docs/` other than `release-and-publishing.md` are pointers kept so old links
+  still land somewhere; don't add guides there. Package ownership is recorded
+  in the bullets above.
+- When flags, defaults, config keys, feed parsing, log messages, signals, exit
+  codes, install paths or service behaviour change, update the matching site
+  pages in the same change, and the README where it covers the same thing.
+  `TestCLIReferenceCoversEveryFlag` in `cmd/blackhole-threats/docs_test.go`
+  fails when a flag is added or removed without updating
+  `website/src/content/docs/reference/cli.mdx`.
+- The mark, the README banner, the social cards and the site's icons all come
+  from `scripts/readme/build_readme_hero.py` via `make readme-hero`. Change the
+  generator, not the generated files.
+- Each sidebar group has its own colour and icon, and each header tab owns
+  some of the groups and shows only those in its sidebar. Both are in
+  `website/src/lib/sections.ts`, matched to the sidebar in
+  `website/astro.config.mjs` by label, so adding or renaming a group means
+  updating `sections` and `tabs` there.
+- The site's components and styles are shared with the other netspeedy docs
+  sites, so their classes, custom properties and elements use the neutral
+  `ns-` prefix and they don't name blackhole-threats. s3ctl's site is the
+  standard, so carry design changes over from there rather than diverging.
+  What's particular to blackhole-threats (its name, description, links, footer
+  columns and the home page's directory line) lives in
+  `website/src/lib/site.ts`, and the pages written for it are
+  `HomeTop.astro`, `InstallTabs.astro` and `src/pages/404.astro`, alongside the
+  content, `astro.config.mjs`, `src/lib/sections.ts` and the palette and mark
+  colours in `theme.css`. Keep it that way, so a change to a shared file can be
+  copied between the sites as it is.
+- The docs are versioned by release line. Only the latest line lives in
+  `website/src/content/docs`; never copy pages into per-version folders. Keep
+  page links root-relative (`/blackhole-threats/...`), so an archived build of
+  a line can rewrite them into its own path. Links to the APT files (`dists/`,
+  `pool/`, the keyring and its fingerprint) are absolute URLs, because they're
+  published beside the build rather than in it.
+- Keep the website out of `.github/`: Dependabot stopped being able to open npm
+  pull requests for manifests under `.github/` in June 2026 (its create-PR call
+  is rejected as "invalid or unauthorized changes").
 - Retired files should be removed from the working tree rather than left behind
   as dead alternatives.
 
@@ -71,11 +107,29 @@ automation.
   ```bash
   make package
   ```
-- Build the GitHub Pages site locally:
+- Build the docs site, then validate the built output (pages, search index,
+  icons, share card and every internal link). The check reads `website/dist`,
+  so it always runs after the build:
   ```bash
   make website-install
   make website-build
+  make website-check
   ```
+- Drive the site in headless Chrome: the theme controls, the header and its
+  tabs, the version menu and an archived line. It builds its own latest and
+  archived copies under `website/.test/`, so it needs no release metadata:
+  ```bash
+  make website-test
+  ```
+- Screenshot the built site in both themes at desktop and phone widths:
+  ```bash
+  make website-capture
+  ```
+- Serve the site with live reload while editing pages with `make website-dev`.
+  When Astro detects an agent it starts the server in the background and
+  returns, so stop it afterwards with `cd website && npx astro dev stop`.
+  `website/README.md` summarises the folder, its targets and how it's
+  published; keep it in step when any of those change.
 - When editing the APT repository builder, at minimum syntax-check it:
   ```bash
   bash -n scripts/build-apt-repository.sh
@@ -158,8 +212,8 @@ automation.
   package, container image, service name, and documentation are all updated in
   the same change.
 - Debian package installs should remain conventional and documented. If install
-  paths change, update the packaging metadata and the README Debian section in
-  the same change.
+  paths change, update the packaging metadata, the README Debian section and
+  the site's Debian package and Files and paths pages in the same change.
 - Current Debian paths are:
   - `/usr/sbin/blackhole-threats`
   - `/etc/blackhole-threats.yaml`
@@ -168,9 +222,9 @@ automation.
   - `/usr/share/doc/blackhole-threats/examples/blackhole-threats.yaml`
 - The Debian package and the GitHub Pages APT repository are both first-party
   deliverables. Do not treat Debian packaging as secondary or optional.
-- The GitHub Pages root is both a human-facing landing site and the machine-
-  readable APT repository root. Keep the landing page compatible with static
-  hosting and do not break the `dists/`, `pool/`, or key download paths.
+- The GitHub Pages root is both the human-facing docs site and the machine-
+  readable APT repository root. Keep the site compatible with static hosting
+  and do not break the `dists/`, `pool/`, or key download paths.
 - Website-only GitHub Pages refreshes from `main` should reuse the latest
   published repository snapshot rather than forcing a new release tag or
   rebuilding unsigned repository metadata.
@@ -199,7 +253,7 @@ automation.
   workflows and README are updated together.
 - If container paths, labels, runtime user expectations, or startup behavior
   change, update `Dockerfile`, `packaging/container/`, the container workflow,
-  and the README container section together.
+  the README container section and the site's Container page together.
 
 ## GitHub Actions & Public Repo Security
 
@@ -215,7 +269,7 @@ automation.
   builds.
 - Release publishing is limited to trusted `v*` / `v*-rc.*` tags.
 - Signed APT repository publishing is limited to trusted stable `v*` tags.
-- The separate landing-site Pages deploy may run from `main` pushes and after
+- The separate docs-site Pages deploy may run from `main` pushes and after
   successful stable APT publication, but it must only republish the website on
   top of the latest published repository snapshot; do not turn those refreshes
   into unsigned APT repository rebuilds.
@@ -267,13 +321,9 @@ automation.
   ```bash
   make package
   ```
-- If you change `website/` or GitHub Pages publishing behavior,
-  also run:
-  ```bash
-  make website-install
-  make website-check
-  make website-build
-  ```
+- If you change `website/` or GitHub Pages publishing behavior, run
+  `make website-build`, `make website-check` and `make website-test`, and look
+  at `make website-capture` output for layout changes.
 - If you change `scripts/build-apt-repository.sh`, also run:
   ```bash
   bash -n scripts/build-apt-repository.sh
@@ -318,7 +368,7 @@ automation.
   `v*-rc.*` tag from merged commit history and run the prerelease publish path.
   Do not merge partial work to `main` that should not become a published
   prerelease.
-- Docs-only, README-only, website-only, or CI-only landing-page updates should
+- Docs-only, README-only, website-only, or CI-only site updates should
   use the normal `main` push path and the Pages-site deploy workflow; do not
   cut a release tag just to refresh the public website.
 - Do not hand-push routine `v*` or `v*-rc.*` tags. Automated tagging from
@@ -337,17 +387,19 @@ automation.
 - Keep `README.md` aligned with the actual operator workflow. If install,
   release, container, or repository behavior changes, update the relevant README
   sections in the same change.
-- Keep `docs/architecture.md` aligned with the real package/module boundaries
-  when code ownership moves.
+- Keep the package ownership bullets in this file aligned with the real
+  package/module boundaries when code ownership moves, and the site's How it
+  works pages aligned with the runtime behaviour.
 - If the configuration schema or operator defaults change, update
-  `examples/blackhole-threats.yaml` and the matching README configuration text
-  in the same change.
+  `examples/blackhole-threats.yaml`, the matching README configuration text
+  and the site's Configuration and Config keys pages in the same change.
 - If Debian-installed paths or service behavior change, update the README Debian
-  package section.
+  package section and the site's Debian package and Files and paths pages.
 - If APT publication, signing, or Pages behavior changes, update the README APT
   repository section.
 - If the `make website-*` targets, the site's build inputs, or the workflows that
-  publish it change, update `website/README.md`.
+  publish it change, update `website/README.md` and the Website section of
+  `docs/release-and-publishing.md`.
 - If workflow names, publish conditions, or security posture change, update the
   README CI/CD and contributing sections.
 - If contribution, conduct, security, support, governance, roadmap, funding, or
@@ -382,7 +434,8 @@ These rules apply specifically to AI coding agents working in this repository.
 
 Before making non-trivial changes, an agent should:
 
-1. Read `README.md` and `docs/architecture.md` for the current operator-facing
+1. Read `README.md` and the site's How it works pages
+   (`website/src/content/docs/how-it-works/`) for the current operator-facing
    conventions.
 2. Review `Makefile` before inventing new local build or test commands.
 3. Review the relevant files under `.github/workflows/` before changing release,

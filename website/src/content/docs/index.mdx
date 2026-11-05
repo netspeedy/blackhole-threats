@@ -1,0 +1,20 @@
+---
+title: Threat feeds in. Blackhole routes out.
+description: blackhole-threats reads text and JSON threat feeds, summarises the prefixes and announces them over BGP with a community your routers can blackhole.
+template: splash
+tableOfContents: false
+editUrl: false
+prev: false
+next: false
+---
+
+import HomeTop from "../../components/HomeTop.astro";
+import DocsDirectory from "../../components/DocsDirectory.astro";
+
+<HomeTop>
+blackhole-threats reads threat feeds from files and URLs, pulls out the IPv4 and IPv6 prefixes,
+summarises them and announces them to your BGP peers with a community such as `64520:666`. Your
+routers match the community and drop the traffic. When a feed fails, its routes stay as they were.
+</HomeTop>
+
+<DocsDirectory />

@@ -1,0 +1,100 @@
+---
+// The three-way theme switch in place of Starlight's select, at the foot of the phone menu. The
+// header has the same choice as a menu (ThemeMenu.astro); src/lib/theme.ts keeps the two in step.
+import { icons } from "../lib/icons";
+
+const options = [
+  { value: "light", label: "Light theme" },
+  { value: "dark", label: "Dark theme" },
+  { value: "auto", label: "Match system theme" },
+] as const;
+---
+
+<ns-theme-switch class="ns-theme" role="group" aria-label="Colour theme">
+  {
+    options.map(({ value, label }) => (
+      <button type="button" data-value={value} aria-pressed="false" aria-label={label} title={label}>
+        <svg viewBox="0 0 24 24" aria-hidden="true" set:html={icons[value]} />
+      </button>
+    ))
+  }
+</ns-theme-switch>
+
+{/* Inlined so the pressed state is right on first paint. */}
+<script is:inline>
+  (() => {
+    let stored = null;
+    try {
+      stored = localStorage.getItem("starlight-theme");
+    } catch {}
+    const value = stored === "light" || stored === "dark" ? stored : "auto";
+    document.querySelectorAll("ns-theme-switch button").forEach((button) => {
+      button.setAttribute("aria-pressed", String(button.dataset.value === value));
+    });
+  })();
+</script>
+
+<script>
+  import { applyTheme, onThemeChange, parseTheme } from "../lib/theme";
+
+  onThemeChange((theme) => {
+    document.querySelectorAll<HTMLButtonElement>("ns-theme-switch button").forEach((button) => {
+      button.setAttribute("aria-pressed", String(button.dataset.value === theme));
+    });
+  });
+
+  class ThemeSwitch extends HTMLElement {
+    connectedCallback() {
+      this.addEventListener("click", (event) => {
+        const button = (event.target as Element).closest<HTMLButtonElement>("button[data-value]");
+        if (button) applyTheme(parseTheme(button.dataset.value));
+      });
+    }
+  }
+
+  customElements.define("ns-theme-switch", ThemeSwitch);
+</script>
+
+<style>
+  .ns-theme {
+    display: inline-flex;
+    gap: 2px;
+    padding: 2px;
+    border: 1px solid var(--sl-color-hairline-light);
+    border-radius: 10px;
+  }
+  button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.5rem;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--sl-color-gray-3);
+    cursor: pointer;
+  }
+  button:hover {
+    color: var(--sl-color-white);
+  }
+  button[aria-pressed="true"] {
+    background-color: var(--ns-current-bg);
+    color: var(--ns-current-ink);
+  }
+  svg {
+    width: 1.0625rem;
+    height: 1.0625rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  @media (max-width: 49.99em) {
+    button {
+      height: 2.75rem;
+    }
+  }
+</style>

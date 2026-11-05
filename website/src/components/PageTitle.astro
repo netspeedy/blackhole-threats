@@ -1,0 +1,68 @@
+---
+import { currentSection } from "../lib/sections";
+import SectionIcon from "./SectionIcon.astro";
+
+// Starlight's own title id, which its skip link and table of contents point at.
+const PAGE_TITLE_ID = "_top";
+
+const { entry, sidebar } = Astro.locals.starlightRoute;
+
+// The home page draws its own title in HomeTop.astro, with this id on its h1.
+const home = Astro.url.pathname.replace(/\/$/, "") === import.meta.env.BASE_URL.replace(/\/$/, "");
+const section = currentSection(sidebar);
+const { title, description } = entry.data;
+---
+
+{
+  !home && (
+    <>
+      {section && (
+        <p class="ns-crumbs">
+          <SectionIcon section={section} />
+          <span class="ns-section">{section.label}</span>
+          <span class="ns-sep" aria-hidden="true">
+            /
+          </span>
+          <span class="ns-here">{title}</span>
+        </p>
+      )}
+      <h1 id={PAGE_TITLE_ID}>{title}</h1>
+      {description && <p class="ns-lead">{description}</p>}
+    </>
+  )
+}
+
+<style>
+  .ns-crumbs {
+    display: flex;
+    align-items: center;
+    gap: 0.5625rem;
+    margin: 0.5rem 0 0;
+    font-size: var(--sl-text-sm);
+  }
+  .ns-section {
+    font-weight: 600;
+    color: var(--ns-page);
+  }
+  .ns-sep {
+    color: var(--sl-color-gray-3);
+  }
+  .ns-here {
+    color: var(--sl-color-gray-2);
+  }
+  h1 {
+    margin-top: 0.875rem;
+    font-size: var(--sl-text-h1);
+    line-height: 1.12;
+    font-weight: 750;
+    letter-spacing: -0.03em;
+    color: var(--sl-color-white);
+  }
+  .ns-lead {
+    margin: 0.875rem 0 0;
+    max-width: 42rem;
+    font-size: var(--sl-text-lg);
+    line-height: 1.6;
+    color: var(--sl-color-gray-2);
+  }
+</style>

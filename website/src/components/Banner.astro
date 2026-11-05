@@ -1,0 +1,200 @@
+---
+// Starlight's banner, plus a notice at the top of every page of an archived line. It's written to
+// read on its own, and once the root's versions.json loads it names the latest release and links
+// to the same page in the latest docs, or to their first page if this one isn't there.
+//
+// The close button hides the notice on every page of this line in this browser, until a newer
+// release than the one it was closed at comes out. Every netspeedy project's docs share the
+// netspeedy.github.io origin, so the key names the site as well as the line.
+import Default from "@astrojs/starlight/components/Banner.astro";
+import { icons } from "../lib/icons";
+import { docs, siteRoot } from "../lib/site";
+
+const base = docs.versions.find((version) => version.version === docs.current)!.url;
+const storageKey = `archived-notice:${siteRoot}${docs.current}`;
+---
+
+{
+  docs.archived && (
+    <>
+      <ns-archived-notice
+        class="ns-archived"
+        data-root={siteRoot}
+        data-base={base}
+        data-key={storageKey}
+        data-pagefind-ignore
+      >
+        <div>
+          <svg viewBox="0 0 24 24" aria-hidden="true" set:html={icons.clock} />
+          <p>
+            <b>You're reading the docs for {docs.current}<span data-older>, an older version</span>.</b>{" "}
+            <span data-latest-release />{" "}
+            <a href={siteRoot} data-latest-link>Read the latest docs</a>
+          </p>
+          <button
+            class="ns-close"
+            type="button"
+            aria-label={`Hide this notice for ${docs.current}`}
+            title={`Hide for ${docs.current}`}
+            hidden
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" set:html={icons.close} />
+          </button>
+        </div>
+      </ns-archived-notice>
+      {/* Inlined so a closed notice never flashes up before the page's script runs. */}
+      <script is:inline define:vars={{ storageKey }}>
+        try {
+          if (localStorage.getItem(storageKey)) document.querySelector("ns-archived-notice").hidden = true;
+        } catch {}
+      </script>
+    </>
+  )
+}
+<Default />
+
+<script>
+  import { loadVersions, samePageIn } from "../lib/versions";
+
+  const read = (key: string) => {
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  };
+  const write = (key: string, value: string | null) => {
+    try {
+      if (value === null) localStorage.removeItem(key);
+      else localStorage.setItem(key, value);
+    } catch {
+      // Private windows can refuse storage; the notice still closes for this page.
+    }
+  };
+
+  class ArchivedNotice extends HTMLElement {
+    async connectedCallback() {
+      const { root = "/", base = "", key = "" } = this.dataset;
+      let latestRelease: string | undefined;
+
+      const close = this.querySelector<HTMLButtonElement>(".ns-close")!;
+      close.hidden = false;
+      close.addEventListener("click", () => {
+        write(key, latestRelease ?? "unknown");
+        this.hidden = true;
+        const title = document.getElementById("_top");
+        if (title) {
+          title.tabIndex = -1;
+          title.focus();
+        }
+      });
+
+      const latest = (await loadVersions(root))?.find((version) => version.latest);
+      if (!latest) return;
+      latestRelease = latest.release;
+      // A notice closed at an older latest release comes back: there's news.
+      const closedAt = read(key);
+      if (closedAt === "unknown") write(key, latest.release);
+      else if (closedAt && closedAt !== latest.release) {
+        write(key, null);
+        this.hidden = false;
+      }
+      this.querySelector("[data-older]")?.remove();
+      this.querySelector("[data-latest-release]")!.textContent = `The latest release is ${latest.release}.`;
+      const link = this.querySelector<HTMLAnchorElement>("[data-latest-link]")!;
+      link.textContent = `Read this page in ${latest.version}`;
+      link.href = await samePageIn(latest.url, base);
+    }
+  }
+
+  customElements.define("ns-archived-notice", ArchivedNotice);
+</script>
+
+<style>
+  .ns-archived {
+    display: block;
+    padding: 1.5rem var(--sl-content-pad-x) 0;
+  }
+  .ns-archived[hidden] {
+    display: none;
+  }
+  div {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.625rem;
+    max-width: var(--sl-content-width);
+    padding: 0.5625rem 0.5rem 0.5625rem 0.875rem;
+    border: 1px solid var(--ns-c3-line);
+    border-radius: 12px;
+    background-color: var(--ns-c3-bg);
+  }
+  svg {
+    flex: none;
+    width: 1.125rem;
+    height: 1.125rem;
+    margin-top: 0.1875rem;
+    fill: none;
+    stroke: var(--ns-c3);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  p {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    font-size: var(--sl-text-sm);
+    line-height: 1.6;
+    color: var(--sl-color-gray-2);
+  }
+  b {
+    font-weight: 600;
+    color: var(--ns-c3-ink);
+  }
+  a {
+    font-weight: 600;
+    color: var(--ns-c3-ink);
+    text-underline-offset: 3px;
+    white-space: nowrap;
+  }
+  .ns-close {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--sl-color-gray-3);
+    cursor: pointer;
+  }
+  .ns-close[hidden] {
+    display: none;
+  }
+  .ns-close:hover {
+    background-color: color-mix(in srgb, var(--ns-c3) 16%, transparent);
+    color: var(--ns-c3-ink);
+  }
+  .ns-close svg {
+    width: 0.9375rem;
+    height: 0.9375rem;
+    margin: 0;
+    stroke: currentColor;
+    stroke-width: 2.2;
+  }
+  @media (min-width: 50rem) {
+    div {
+      align-items: center;
+    }
+    svg {
+      margin-top: 0;
+    }
+  }
+  @media (min-width: 72rem) {
+    div {
+      margin-inline: var(--sl-content-margin-inline, auto);
+    }
+  }
+</style>

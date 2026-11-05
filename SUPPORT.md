@@ -10,8 +10,9 @@ running it in production.
   examples, feed ideas, and early roadmap discussion.
 - Use GitHub Issues for reproducible bugs, packaging problems, documentation
   gaps, and focused feature requests.
-- Use [docs/troubleshooting.md](docs/troubleshooting.md) first for common
-  config, feed, BGP, container, Debian, and APT repository problems.
+- Use [Troubleshooting](https://netspeedy.github.io/blackhole-threats/guides/troubleshooting/)
+  in the docs first for common config, feed, BGP, container, and Debian
+  problems.
 - Use [SECURITY.md](SECURITY.md) for vulnerabilities or sensitive findings.
 
 ## What To Include

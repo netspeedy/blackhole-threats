@@ -1,0 +1,168 @@
+---
+import Search from "@astrojs/starlight/components/Search.astro";
+import { github } from "../lib/icons";
+import { tabsFor } from "../lib/sections";
+import { links, product } from "../lib/site";
+import SiteTitle from "./SiteTitle.astro";
+import ThemeMenu from "./ThemeMenu.astro";
+import VersionMenu from "./VersionMenu.astro";
+
+// Each tab has its own sidebar (routeData.ts narrows it), and the tab whose groups hold the current
+// page is current. The home page sits outside every tab.
+const tabs = tabsFor(Astro.locals.fullSidebar).filter((tab) => tab.href);
+---
+
+<div class="ns-header">
+  <div class="ns-brand">
+    <SiteTitle />
+    <VersionMenu />
+  </div>
+  <nav class="ns-tabs print:hidden" aria-label="Sections">
+    {
+      tabs.map(({ label, href, current }) => (
+        <a href={href} aria-current={current ? "page" : undefined}>
+          {label}
+        </a>
+      ))
+    }
+  </nav>
+  <div class="ns-search print:hidden"><Search /></div>
+  <div class="ns-actions sl-hidden md:sl-flex print:hidden">
+    <a class="ns-icon" href={links.repo} aria-label={`${product.name} on GitHub`} title={`${product.name} on GitHub`}>
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d={github} /></svg>
+    </a>
+    <ThemeMenu />
+  </div>
+</div>
+
+<style>
+  /* Phones: the name, search and the menu in the bar, and the sections in a row under it. */
+  .ns-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-rows: var(--ns-bar) var(--ns-tabs);
+    grid-template-areas:
+      "brand search actions"
+      "tabs tabs tabs";
+    align-items: center;
+    column-gap: 0.25rem;
+    height: 100%;
+  }
+  /* The full height of the bar, so the version list opens just below it. */
+  .ns-brand {
+    grid-area: brand;
+    position: relative;
+    display: flex;
+    align-self: stretch;
+    align-items: center;
+    gap: 0.25rem;
+    min-width: 0;
+  }
+  .ns-tabs {
+    grid-area: tabs;
+    display: flex;
+    align-self: stretch;
+    gap: 0.25rem;
+    margin-inline: -0.75rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+    font-size: var(--sl-text-sm);
+    font-weight: 500;
+  }
+  .ns-tabs a {
+    display: inline-flex;
+    align-items: center;
+    padding: 0 0.75rem;
+    border-bottom: 2px solid transparent;
+    color: var(--sl-color-gray-3);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .ns-tabs a:hover {
+    color: var(--sl-color-white);
+  }
+  .ns-tabs a[aria-current="page"] {
+    border-bottom-color: var(--sl-color-text-accent);
+    color: var(--sl-color-white);
+  }
+  .ns-search {
+    grid-area: search;
+    display: flex;
+  }
+  .ns-actions {
+    grid-area: actions;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  .ns-icon {
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 9px;
+    color: var(--sl-color-gray-2);
+  }
+  .ns-icon:hover {
+    background-color: var(--ns-hover-fill);
+    color: var(--sl-color-white);
+  }
+  .ns-icon svg {
+    width: 1.125rem;
+    height: 1.125rem;
+    fill: currentColor;
+  }
+
+  @media (max-width: 23.99rem) {
+    .ns-tabs a {
+      padding: 0 0.5rem;
+    }
+  }
+
+  /* Pages without a sidebar, like the home page, have no mobile menu, so the theme button stays
+     in the bar on phones there. */
+  @media (max-width: 49.99rem) {
+    :global(:root:not([data-has-sidebar])) .ns-actions {
+      display: flex;
+    }
+    :global(:root:not([data-has-sidebar])) .ns-icon {
+      display: none;
+    }
+  }
+
+  /* One row. The name's column is as wide as the sidebar, less the header's padding, so the
+     sections start exactly at the sidebar's edge, and the current one is underlined along the bar's
+     bottom. */
+  @media (min-width: 50rem) {
+    .ns-header {
+      grid-template-columns: calc(var(--sl-sidebar-width) - var(--sl-nav-pad-x)) minmax(0, 1fr) auto auto;
+      grid-template-rows: var(--ns-bar);
+      grid-template-areas: "brand tabs search actions";
+      column-gap: 0;
+    }
+    .ns-tabs {
+      margin-inline: 0;
+      overflow: visible;
+    }
+    .ns-search {
+      margin-inline-end: 0.5rem;
+    }
+    .ns-search :global(button[data-open-modal]) {
+      width: 13.75rem;
+      height: 2.25rem;
+    }
+  }
+
+  /* Tablets: the search becomes its icon, so the sections keep their place. */
+  @media (min-width: 50rem) and (max-width: 63.99rem) {
+    .ns-search :global(button[data-open-modal]) {
+      justify-content: center;
+      width: 2.25rem;
+      padding: 0;
+      border-color: transparent;
+      background: transparent;
+    }
+    .ns-search :global(button[data-open-modal] > :not(svg)) {
+      display: none;
+    }
+  }
+</style>

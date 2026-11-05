@@ -1,0 +1,23 @@
+---
+// Starlight's ThemeProvider sets <html data-theme> before first paint, but reads localStorage
+// unguarded. Where storage is refused (an embedded preview, or a browser blocking site data) that
+// throws, and the page keeps the build's data-theme="dark" even for a light system. This is the
+// same script with the read guarded.
+//
+// updatePickers is kept because the global it defines is Starlight's contract; only Starlight's
+// own select calls it, and ThemeSelect.astro replaces that select, so it has nothing to update.
+---
+
+{/* Inlined so the theme is right on first paint. */}
+<script is:inline>
+  window.StarlightThemeProvider = (() => {
+    let storedTheme = null;
+    try {
+      storedTheme = localStorage.getItem("starlight-theme");
+    } catch {}
+    const theme =
+      storedTheme || (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+    document.documentElement.dataset.theme = theme === "light" ? "light" : "dark";
+    return { updatePickers() {} };
+  })();
+</script>

@@ -1,0 +1,126 @@
+---
+title: Quickstart
+description: Install blackhole-threats, write a lab config with a local feed, check it and run one refresh.
+---
+
+import NextSteps from "../../components/NextSteps.astro";
+
+This walk-through runs blackhole-threats on your own machine against a local feed file, on an
+unprivileged port, so you can see what it does before it goes anywhere near a router.
+
+## Install it
+
+Install it from the signed APT repository, a release archive or a source build;
+[Installation](/blackhole-threats/installation/) has every channel. Then check it's on your path:
+
+```bash
+blackhole-threats -version
+```
+
+`-version` prints the version, the commit and the build date, then exits.
+
+## Write a lab config
+
+Save this as `lab.yaml` in a working directory of your own. It's an iBGP setup with local AS 64520, and it listens
+and dials on port 1179 rather than 179, so it runs without root. The addresses are from the
+documentation ranges; put a lab router's address in `neighboraddress` if you have one.
+
+```yaml title="lab.yaml"
+gobgp:
+  global:
+    config:
+      as: 64520
+      routerid: "198.51.100.10"
+      port: 1179
+  neighbors:
+    - config:
+        neighboraddress: "198.51.100.1"
+        peeras: 64520
+        port: 1179
+
+feeds:
+  - url: ./local-feed.txt
+    community: 64520:1200
+```
+
+The feed is a file path, which blackhole-threats opens relative to the directory you run it from,
+not the config's directory. Save this beside it as `local-feed.txt`:
+
+```text title="local-feed.txt"
+# Local blocklist
+198.51.100.10
+203.0.113.0/25
+203.0.113.128/25
+2001:db8:10::/48
+```
+
+## Check it
+
+`-check-config` loads the file, checks the local ASN, the router ID and every feed, and exits
+without starting BGP:
+
+```bash
+blackhole-threats -conf lab.yaml -check-config
+```
+
+```text title="Output"
+configuration OK: 1 feed(s)
+```
+
+Anything it doesn't like stops it with exit code 1 and a `level=fatal` line saying what's wrong.
+The YAML is decoded strictly, so a misspelt key is an error rather than something silently
+ignored.
+
+## Run one refresh
+
+`-once` starts the embedded GoBGP server, runs a single refresh and exits:
+
+```bash
+blackhole-threats -conf lab.yaml -once
+```
+
+```text title="Output"
+time=2026-11-05T04:38:15Z level=info msg="Starting blackhole-threats" build_date=2026-11-05T04:26:59Z commit=8022bad go_arch=arm64 go_os=darwin go_version=go1.27.3 pid=72697 tag_version=v1.1.6-rc.7
+time=2026-11-05T04:38:15Z level=info msg="Loaded runtime configuration" cli_feeds=0 config_path=lab.yaml configured_feeds=1 default_community=64520:666 local_as=64520 peer_count=1 refresh_interval=2h0m0s router_id=198.51.100.10 run_mode=oneshot total_feeds=1
+time=2026-11-05T04:38:15Z level=info msg="Add Peer" component=gobgp key= topic=config
+time=2026-11-05T04:38:15Z level=info msg="Add a peer configuration" component=gobgp key=198.51.100.1 topic=Peer
+time=2026-11-05T04:38:15Z level=info msg="Started blackhole-threats"
+time=2026-11-05T04:38:15Z level=info msg="Parsed threat feed" prefixes_read=4 source=./local-feed.txt
+time=2026-11-05T04:38:15Z level=info msg="Prepared community routes" community=64520:1200 feed_count=1 prefixes_read=4 prefixes_summarized=3
+time=2026-11-05T04:38:15Z level=info msg="Refresh completed" active_routes=3 announced=3 duration_ms=2 withdrawn=0
+time=2026-11-05T04:38:15Z level=info msg="Completed single refresh cycle"
+time=2026-11-05T04:38:15Z level=info msg="Delete a peer configuration" component=gobgp key=198.51.100.1 topic=Peer
+time=2026-11-05T04:38:15Z level=info msg="Stopped blackhole-threats"
+```
+
+Reading it from the top: the first line is the build (this run was on a Mac, hence
+`go_os=darwin`), and `Loaded runtime configuration` is what the daemon will run with. Check `local_as`, `router_id`, `peer_count` and `default_community`
+here before you point it at a real router. Lines with `component=gobgp` come from the embedded
+GoBGP server.
+
+`Parsed threat feed` found four prefixes in the file. `Prepared community routes` summarised
+them to three, because the two `/25`s make up `203.0.113.0/24`. `Refresh completed` then
+announced those three routes with community `64520:1200`: `198.51.100.10/32`, `203.0.113.0/24`
+and `2001:db8:10::/48`.
+
+:::note
+`-once` doesn't wait for BGP sessions to come up, and it stops the BGP server as soon as the
+refresh finishes, so a peer will usually never see these routes. Treat it as a check of the feeds
+and the route table. It also exits 0 when a feed fails, so look for `Failed to read threat feed`
+in its output rather than relying on the exit code.
+:::
+
+## Run it for real
+
+Without `-once` the same command keeps running, keeps its BGP sessions up and refreshes every two
+hours. For production you'd normally run it as the packaged systemd service or the container,
+on port 179, with your own ASN, router ID, neighbors and feeds.
+
+<NextSteps
+  links={[
+    { title: "Configuration", href: "/blackhole-threats/guides/configuration/", description: "Write the real config: peers, ports, feeds and communities." },
+    { title: "Debian package", href: "/blackhole-threats/guides/debian/", description: "Run it under systemd from the signed APT repository." },
+    { title: "Router policy", href: "/blackhole-threats/guides/router-policy/", description: "Accept the routes on your routers and blackhole them." },
+    { title: "Log messages", href: "/blackhole-threats/reference/logs/", description: "Every line it writes and what the fields mean." },
+  ]}
+/>

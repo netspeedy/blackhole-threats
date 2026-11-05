@@ -6,18 +6,13 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || (dpkg-par
 COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || printf '%s' packaged)
 BUILD_DATE ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 GOFLAGS ?= -trimpath
-SITE_URL ?= https://netspeedy.github.io/blackhole-threats/
-SITE_RELEASE_VERSION ?= $(VERSION)
-SITE_COMMIT ?= $(COMMIT)
-SITE_BUILD_DATE ?= $(BUILD_DATE)
-SITE_APT_FINGERPRINT ?= Published alongside stable release builds.
 WEBSITE_DIR ?= website
 LDFLAGS ?= -s -w \
 	-X $(PKG)/internal/buildinfo.Version=$(VERSION) \
 	-X $(PKG)/internal/buildinfo.Commit=$(COMMIT) \
 	-X $(PKG)/internal/buildinfo.BuildDate=$(BUILD_DATE)
 
-.PHONY: fmt fmt-check vet test build build-cross docker-build website-install website-dev website-check website-build readme-hero clean package
+.PHONY: fmt fmt-check vet test build build-cross docker-build website-install website-dev website-build website-check website-test website-capture readme-hero clean package
 
 test:
 	$(GO) test ./...
@@ -57,18 +52,21 @@ website-dev:
 	test -d $(WEBSITE_DIR)/node_modules || (printf 'missing website dependencies; run `make website-install`\n' >&2 && exit 1)
 	npm --prefix $(WEBSITE_DIR) run dev
 
+website-build:
+	test -d $(WEBSITE_DIR)/node_modules || (printf 'missing website dependencies; run `make website-install`\n' >&2 && exit 1)
+	npm --prefix $(WEBSITE_DIR) run build
+
 website-check:
 	test -d $(WEBSITE_DIR)/node_modules || (printf 'missing website dependencies; run `make website-install`\n' >&2 && exit 1)
 	npm --prefix $(WEBSITE_DIR) run check
 
-website-build:
+website-test:
 	test -d $(WEBSITE_DIR)/node_modules || (printf 'missing website dependencies; run `make website-install`\n' >&2 && exit 1)
-	PUBLIC_SITE_URL=$(SITE_URL) \
-	PUBLIC_RELEASE_VERSION=$(SITE_RELEASE_VERSION) \
-	PUBLIC_COMMIT=$(SITE_COMMIT) \
-	PUBLIC_BUILD_DATE=$(SITE_BUILD_DATE) \
-	PUBLIC_APT_FINGERPRINT='$(SITE_APT_FINGERPRINT)' \
-	npm --prefix $(WEBSITE_DIR) run build
+	npm --prefix $(WEBSITE_DIR) run test
+
+website-capture:
+	test -d $(WEBSITE_DIR)/node_modules || (printf 'missing website dependencies; run `make website-install`\n' >&2 && exit 1)
+	npm --prefix $(WEBSITE_DIR) run capture
 
 readme-hero:
 	uv run scripts/readme/build_readme_hero.py

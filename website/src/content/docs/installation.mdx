@@ -1,0 +1,131 @@
+---
+title: Installation
+description: The signed APT repository, a single Debian package, the container image, release archives and source builds.
+---
+
+import { Code } from "@astrojs/starlight/components";
+import { links, release } from "../../lib/site";
+
+export const pinned = release.tagged ? release.version : "v1.2.3";
+export const debVersion = `${pinned.replace(/^v/, "").replace("-rc.", "~rc.")}-1`;
+
+Every stable release publishes:
+
+- archives for Linux `amd64`, `arm64` and `arm`, each holding one statically linked binary
+- Debian packages for `amd64`, `arm64` and `armhf`, the Debian source package, and a signed APT
+  repository with binary and source indexes
+- a container image on [GHCR](https://github.com/netspeedy/blackhole-threats/pkgs/container/blackhole-threats)
+  for `linux/amd64` and `linux/arm64`
+- a `sha256sums.txt` covering the archives and packages
+
+Release candidates use tags like `v1.2.3-rc.1`. They get archives, packages and an image tag of
+their own on GitHub, but the APT repository and the image's `latest` tag only ever carry stable
+releases.
+
+## Signed APT repository
+
+On Debian and Ubuntu hosts this is the recommended way to run it. Add the archive key and the
+source, then install:
+
+<Code lang="bash" code={`sudo install -d -m 0755 /etc/apt/keyrings
+curl -fsSL ${links.aptKey} \\
+  | sudo tee /etc/apt/keyrings/blackhole-threats-archive-keyring.gpg >/dev/null
+
+curl -fsSL ${links.aptKeyFingerprint}
+
+sudo tee /etc/apt/sources.list.d/blackhole-threats.sources >/dev/null <<'EOF'
+Types: deb deb-src
+URIs: ${links.aptUrl}
+Suites: stable
+Components: main
+Signed-By: /etc/apt/keyrings/blackhole-threats-archive-keyring.gpg
+EOF
+
+sudo apt update
+sudo apt install blackhole-threats`} />
+
+{release.aptFingerprint ? (
+  <p>The repository is signed with <code>{release.aptFingerprint}</code>. Check that the published fingerprint the second command prints matches it before you go on.</p>
+) : (
+  <p>The second command prints the archive key's published fingerprint. Check it against a copy you got another way before you trust the key.</p>
+)}
+
+The repository lives at the root of this site, beside the docs. It has a `deb-src` index too, so
+`apt source blackhole-threats` fetches the Debian source package.
+
+The package puts the binary in `/usr/sbin`, the example config in `/etc/blackhole-threats.yaml`
+and a systemd unit in place, and starts the service. [Debian package](/blackhole-threats/guides/debian/)
+covers what to do next, and [Files and paths](/blackhole-threats/reference/files/) lists
+everything it installs.
+
+### A single Debian package
+
+To install one package without adding the repository, download it from the release and let apt
+install it:
+
+<Code lang="bash" code={`curl -fsSLO ${links.releases}/download/${pinned}/blackhole-threats_${debVersion}_amd64.deb
+curl -fsSLO ${links.releases}/download/${pinned}/sha256sums.txt
+sha256sum -c --ignore-missing sha256sums.txt
+sudo apt install ./blackhole-threats_${debVersion}_amd64.deb`} />
+
+Swap `amd64` for `arm64` or `armhf` as needed. A package installed this way doesn't update with
+`apt upgrade`.
+
+## Container
+
+The image is on [GHCR](https://github.com/netspeedy/blackhole-threats/pkgs/container/blackhole-threats).
+Mount a directory at `/config` and publish the BGP port:
+
+<Code lang="bash" code={`docker run -d \\
+  -p 179:179 \\
+  -v "$PWD/config:/config" \\
+  --name blackhole-threats \\
+  ${links.image}:${release.tagged ? release.version : "latest"}`} />
+
+On first start it writes a placeholder config to `config/blackhole-threats.yaml` and runs with it,
+so edit that file and restart the container. [Container](/blackhole-threats/guides/container/)
+has the details.
+
+A stable release is tagged with its version both with and without the `v` (`v1.2.3` and
+`1.2.3`), its minor line (`1.2`) and `latest`. A release candidate is tagged with its own version
+(`v1.2.3-rc.1`) and `rc`.
+
+## Release archives
+
+Each archive holds a single binary named for its platform, such as
+`blackhole-threats-linux-amd64`. Check it against `sha256sums.txt`, then install it wherever you
+keep system binaries:
+
+<Code lang="bash" code={`curl -fsSLO ${links.releases}/download/${pinned}/blackhole-threats-linux-amd64.tar.gz
+curl -fsSLO ${links.releases}/download/${pinned}/sha256sums.txt
+sha256sum -c --ignore-missing sha256sums.txt
+tar -xzf blackhole-threats-linux-amd64.tar.gz
+sudo install -m 0755 blackhole-threats-linux-amd64 /usr/local/sbin/blackhole-threats`} />
+
+The archive has no config, unit file or man page. Start from the
+[example config](https://github.com/netspeedy/blackhole-threats/blob/main/examples/blackhole-threats.yaml)
+and run the binary under whatever supervises your services.
+
+## From source
+
+Source builds use your Go toolchain and the Makefile, which stamps the version, commit and build
+date from git into the binary:
+
+```bash
+git clone https://github.com/netspeedy/blackhole-threats.git
+cd blackhole-threats
+make build
+```
+
+The binary is `dist/blackhole-threats`. `make build-cross GOOS=linux GOARCH=arm64
+OUTPUT=dist/blackhole-threats-linux-arm64` cross-compiles, and `make package` builds the Debian
+package on a Debian host.
+
+## Upgrading
+
+With the APT repository, `sudo apt update && sudo apt upgrade` picks up new stable releases, and
+your edits to `/etc/blackhole-threats.yaml` are kept. With the container, pull the new tag and
+recreate the container. Either way the daemon restarts, which drops its BGP sessions until it's
+back and has refreshed.
+
+Check which version you're running with `blackhole-threats -version`.

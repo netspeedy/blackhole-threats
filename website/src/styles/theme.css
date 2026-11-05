@@ -1,0 +1,489 @@
+/*
+  The docs theme on top of Starlight. Colours come from the brand palette in
+  scripts/readme/build_readme_hero.py: ink, with coral for the accent and the mark, and cyan,
+  violet and amber beside it.
+
+  Each sidebar group has its own colour (--ns-c1 to --ns-c4: cyan, violet, amber, green), and a
+  page takes its group's as --ns-page-*, which Head.astro sets. Light mode uses darker partners,
+  because the banner's coral, cyan and amber are made for a dark ground.
+
+  Starlight keeps its tokens in cascade layers, so these unlayered rules win. The light values
+  sit on the more specific selector, so both themes have to be set here for every token.
+*/
+
+:root,
+::backdrop {
+  --sl-font: "Inter Variable", "Inter";
+  --sl-font-mono: "JetBrains Mono Variable", "JetBrains Mono";
+
+  --sl-color-white: #e8ecf1;
+  --sl-color-gray-1: #d3dae3;
+  --sl-color-gray-2: #aab3bf;
+  --sl-color-gray-3: #808a97;
+  --sl-color-gray-4: #4f5966;
+  --sl-color-gray-5: #2a323d;
+  --sl-color-gray-6: #161b23;
+  --sl-color-gray-7: #0f131a;
+  --sl-color-black: #0a0d12;
+
+  --sl-color-accent-low: #2a1118;
+  --sl-color-accent: #ff4d63;
+  --sl-color-accent-high: #ff7a8a;
+  --sl-color-text-accent: var(--sl-color-accent-high);
+
+  --sl-color-orange-low: #221a08;
+  --sl-color-orange: #f5b841;
+  --sl-color-orange-high: #f1d9a4;
+  --sl-color-blue-low: #0d1a28;
+  --sl-color-blue: #5cc4ff;
+  --sl-color-blue-high: #bcd9f2;
+  --sl-color-green-low: #0c2116;
+  --sl-color-green: #3cd788;
+  --sl-color-green-high: #b8f0cf;
+  --sl-color-red-low: #2a0f14;
+  --sl-color-red: #ff5d6c;
+  --sl-color-red-high: #ffc7cd;
+
+  --sl-color-bg-nav: var(--sl-color-black);
+  --sl-color-bg-sidebar: var(--sl-color-black);
+  --sl-color-bg-inline-code: var(--sl-color-gray-6);
+  --sl-color-hairline-light: var(--sl-color-gray-5);
+  --sl-color-hairline: #1c222b;
+  --sl-color-hairline-shade: #1c222b;
+
+  --ns-mark: #ff4d63;
+  --ns-current-bg: var(--sl-color-accent-low);
+  --ns-current-ink: #ffa3ae;
+  --ns-ok: #6fd8a5;
+  --ns-ok-dot: #3cd788;
+  --ns-search-bg: var(--sl-color-gray-7);
+  --ns-menu-bg: var(--sl-color-gray-7);
+  --ns-menu-shadow: 0 18px 40px -14px rgb(0 0 0 / 0.45);
+  --ns-num-ink: #04121f;
+
+  --ns-c1: #5cd6ff;
+  --ns-c1-bg: rgb(92 214 255 / 0.09);
+  --ns-c1-line: rgb(92 214 255 / 0.24);
+  --ns-c1-ink: #b4ecff;
+  --ns-c2: #9b7bff;
+  --ns-c2-bg: rgb(155 123 255 / 0.12);
+  --ns-c2-line: rgb(155 123 255 / 0.26);
+  --ns-c2-ink: #c9b8ff;
+  --ns-c3: #f5b841;
+  --ns-c3-bg: rgb(245 184 65 / 0.09);
+  --ns-c3-line: rgb(245 184 65 / 0.24);
+  --ns-c3-ink: #fde1a7;
+  --ns-c4: #3cd788;
+  --ns-c4-bg: rgb(60 215 136 / 0.09);
+  --ns-c4-line: rgb(60 215 136 / 0.24);
+  --ns-c4-ink: #bdf2d6;
+  --ns-c1-fill: rgb(92 214 255 / 0.15);
+  --ns-c2-fill: rgb(155 123 255 / 0.17);
+  --ns-c3-fill: rgb(245 184 65 / 0.15);
+  --ns-c4-fill: rgb(60 215 136 / 0.15);
+  --ns-hover-fill: #12161d;
+
+  --sl-text-h1: clamp(1.875rem, 1.45rem + 1.4vw, 2.375rem);
+  --sl-text-h2: 1.5rem;
+  --sl-text-h3: 1.1875rem;
+  --sl-text-h4: 1.0625rem;
+  --sl-text-h5: 1rem;
+  --sl-text-code: 0.8125rem;
+  --sl-line-height: 1.7;
+
+  --sl-content-width: 48rem;
+  --sl-sidebar-width: 17.5rem;
+  --sl-menu-button-size: 2.75rem;
+
+  /* On phones the header is the bar with the section tabs in a row under it; from tablet width up
+     it's one row (Header.astro). */
+  --ns-bar: 3.5rem;
+  --ns-tabs: 2.75rem;
+  --sl-nav-height: calc(var(--ns-bar) + var(--ns-tabs));
+}
+
+:root[data-theme="light"],
+[data-theme="light"] ::backdrop {
+  --sl-color-white: #0b1220;
+  --sl-color-gray-1: #1b2533;
+  --sl-color-gray-2: #3b4555;
+  --sl-color-gray-3: #5e6977;
+  --sl-color-gray-4: #8a94a1;
+  --sl-color-gray-5: #d2d7de;
+  --sl-color-gray-6: #e4e7eb;
+  --sl-color-gray-7: #f6f8fa;
+  --sl-color-black: #ffffff;
+
+  --sl-color-accent-low: #fdeef0;
+  --sl-color-accent: #c4243b;
+  --sl-color-accent-high: #9e1b2f;
+  --sl-color-text-accent: var(--sl-color-accent);
+
+  --sl-color-orange-low: #fff8ec;
+  --sl-color-orange: #b36b00;
+  --sl-color-orange-high: #553600;
+  --sl-color-blue-low: #f0f7fd;
+  --sl-color-blue: #0b74b8;
+  --sl-color-blue-high: #123e63;
+  --sl-color-green-low: #eef8f2;
+  --sl-color-green: #1c7c4d;
+  --sl-color-green-high: #14532d;
+  --sl-color-red-low: #fdf0f1;
+  --sl-color-red: #c42b3c;
+  --sl-color-red-high: #7a1220;
+
+  --sl-color-bg-nav: var(--sl-color-black);
+  --sl-color-bg-sidebar: var(--sl-color-black);
+  --sl-color-bg-inline-code: #eef0f3;
+  --sl-color-hairline-light: var(--sl-color-gray-6);
+  --sl-color-hairline: #eef0f3;
+  --sl-color-hairline-shade: var(--sl-color-gray-6);
+
+  --ns-mark: #c4243b;
+  --ns-current-bg: var(--sl-color-accent-low);
+  --ns-current-ink: #9e1b2f;
+  --ns-ok: #1c7c4d;
+  --ns-ok-dot: #22a06b;
+  --ns-search-bg: var(--sl-color-gray-7);
+  --ns-menu-bg: #ffffff;
+  --ns-menu-shadow: 0 18px 40px -14px rgb(11 18 32 / 0.25);
+  --ns-num-ink: #ffffff;
+
+  --ns-c1: #0b74b8;
+  --ns-c1-bg: #eaf4fb;
+  --ns-c1-line: #cfe5f5;
+  --ns-c1-ink: #0a4f7d;
+  --ns-c2: #5b3fd1;
+  --ns-c2-bg: #f2effd;
+  --ns-c2-line: #ddd5f8;
+  --ns-c2-ink: #3f2799;
+  --ns-c3: #a35f00;
+  --ns-c3-bg: #fdf4e2;
+  --ns-c3-line: #f2dfb4;
+  --ns-c3-ink: #5c3700;
+  --ns-c4: #1c7c4d;
+  --ns-c4-bg: #e9f6ef;
+  --ns-c4-line: #c8e8d6;
+  --ns-c4-ink: #145a38;
+  --ns-c1-fill: #e0eef9;
+  --ns-c2-fill: #e9e3fb;
+  --ns-c3-fill: #fbeed3;
+  --ns-c4-fill: #ddf2e6;
+  --ns-hover-fill: #f4f5f7;
+}
+
+@media (min-width: 50em) {
+  :root {
+    --ns-bar: 4rem;
+    --sl-nav-height: var(--ns-bar);
+    --sl-nav-pad-x: 1.5rem;
+  }
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Header: its rows fill the frame. */
+header.header {
+  padding-block: 0;
+}
+
+/*
+  The mobile menu button sits in the top row and looks like the header's other buttons: a quiet
+  icon, filled softly while the menu is open, in place of Starlight's solid circle.
+*/
+.sl-menu-button {
+  top: calc((var(--ns-bar) - var(--sl-menu-button-size)) / 2) !important;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background-color: transparent;
+  font-size: 1.125rem;
+  color: var(--sl-color-gray-2);
+  box-shadow: none;
+}
+.sl-menu-button:has(~ :popover-open) {
+  background-color: var(--ns-current-bg);
+  color: var(--ns-current-ink);
+}
+
+/*
+  Sidebar: each group label gets its colour and icon in a small tile, and the current page is
+  marked in its group's colour. Sidebar.astro wraps each group in .ns-group and sets the colour and
+  icon from src/lib/sections.ts, so the wrappers replace Starlight's spacing between groups.
+*/
+.ns-group + .ns-group {
+  margin-top: 0.75rem;
+}
+.sidebar-content .top-level > li > details > summary {
+  position: relative;
+  padding-inline-start: 2.375rem;
+}
+.sidebar-content .top-level > li > details > summary::before,
+.sidebar-content .top-level > li > details > summary::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  translate: 0 -50%;
+}
+.sidebar-content .top-level > li > details > summary::before {
+  inset-inline-start: 0.375rem;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--cl);
+  border-radius: 6px;
+  background-color: var(--cb);
+}
+.sidebar-content .top-level > li > details > summary::after {
+  inset-inline-start: calc(0.375rem + 4.5px);
+  width: 13px;
+  height: 13px;
+  background-color: var(--cc);
+  mask: var(--icon) center / contain no-repeat;
+}
+.sidebar-content .group-label .large {
+  font-size: var(--sl-text-sm);
+  font-weight: 600;
+  color: var(--sl-color-white);
+}
+/*
+  The current page is a rounded row filled with its group's tint, its title in the group's colour
+  and heavier: fill and weight mark position, colour comes second, and there's no edge to bend.
+  Rows sit under the group label's text, clear of the icon column, and hovering one gives it a
+  neutral fill.
+*/
+.sidebar-content ul ul li {
+  margin-inline-start: 0;
+  border-inline-start: 0;
+  padding-inline-start: 0;
+}
+.sidebar-content a {
+  padding-block: 0.375rem;
+  font-size: var(--sl-text-sm);
+}
+.sidebar-content ul ul a {
+  margin-inline-start: 1.75rem;
+  padding-inline: 0.625rem;
+  border-radius: 8px;
+}
+.sidebar-content a:hover {
+  background-color: var(--ns-hover-fill);
+  color: var(--sl-color-white);
+}
+.sidebar-content a[aria-current="page"],
+.sidebar-content a[aria-current="page"]:hover,
+.sidebar-content a[aria-current="page"]:focus {
+  background-color: var(--cf, var(--sl-color-accent-low));
+  color: var(--ci, var(--ns-current-ink));
+  font-weight: 600;
+}
+
+/*
+  On this page: a hairline rail with the current section as a straight 2px segment of it, in the
+  page's colour. The links are square, so the segment stays straight.
+*/
+starlight-toc nav > ul {
+  border-inline-start: 1px solid var(--sl-color-hairline-light);
+}
+starlight-toc a {
+  margin-inline-start: -1px;
+  padding-inline-start: 0.875rem;
+  border-inline-start: 2px solid transparent;
+  border-radius: 0;
+}
+starlight-toc a[aria-current="true"] {
+  border-inline-start-color: var(--ns-page);
+  color: var(--sl-color-white);
+}
+starlight-toc ul ul a {
+  padding-inline-start: 1.625rem;
+}
+
+/* Content. */
+.sl-markdown-content :is(h2, h3, h4) {
+  font-weight: 650;
+  letter-spacing: -0.015em;
+}
+.sl-markdown-content h2 {
+  margin-top: 2.75rem;
+}
+.sl-markdown-content :not(pre) > code:not(.not-content *) {
+  padding: 0.125rem 0.375rem;
+  border: 1px solid var(--sl-color-hairline-shade);
+  border-radius: 5px;
+  font-size: 0.86em;
+  color: var(--sl-color-white);
+}
+.sl-markdown-content ul > li::marker,
+.sl-markdown-content ol:not(.sl-steps) > li::marker {
+  color: var(--ns-page);
+  font-weight: 600;
+}
+
+/* Steps: numbers filled with the page's colour on a soft ring, joined by a fading line. */
+.sl-steps > li::before {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--ns-page) 78%, #ffffff), var(--ns-page));
+  box-shadow: 0 0 0 4px var(--ns-page-bg);
+  color: var(--ns-num-ink);
+  font-weight: 700;
+}
+.sl-steps > li::after {
+  --guide-width: 2px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, var(--ns-page-line), var(--sl-color-hairline-shade));
+}
+
+/*
+  Asides keep their meaning whatever page they're on: notes are cyan, tips green, cautions
+  amber. A tinted panel with a hairline border in the variant's colour, and its icon in a small
+  tile like the sidebar's section icons. No coloured edge, because a side border on a rounded
+  box bends.
+*/
+.starlight-aside {
+  border: 1px solid var(--cl);
+  border-radius: 12px;
+  background-color: var(--cb);
+  color: var(--sl-color-gray-2);
+}
+.starlight-aside--note {
+  --cc: var(--ns-c1);
+  --cb: var(--ns-c1-bg);
+  --cl: var(--ns-c1-line);
+  --sl-color-asides-text-accent: var(--ns-c1-ink);
+}
+.starlight-aside--tip {
+  --cc: var(--ns-c4);
+  --cb: var(--ns-c4-bg);
+  --cl: var(--ns-c4-line);
+  --sl-color-asides-text-accent: var(--ns-c4-ink);
+}
+.starlight-aside--caution {
+  --cc: var(--ns-c3);
+  --cb: var(--ns-c3-bg);
+  --cl: var(--ns-c3-line);
+  --sl-color-asides-text-accent: var(--ns-c3-ink);
+}
+.starlight-aside--danger {
+  --cc: var(--sl-color-red);
+  --cb: var(--sl-color-red-low);
+  --cl: color-mix(in srgb, var(--sl-color-red) 30%, transparent);
+  --sl-color-asides-text-accent: var(--sl-color-red-high);
+}
+.starlight-aside__title {
+  position: relative;
+  gap: 0.75rem;
+  font-size: var(--sl-text-base);
+}
+/* The tile is drawn behind the icon, so the icon keeps Starlight's markup. */
+.starlight-aside__title::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 0;
+  top: 50%;
+  width: 26px;
+  height: 26px;
+  margin-top: -13px;
+  box-sizing: border-box;
+  border: 1px solid var(--cl);
+  border-radius: 7px;
+  background-color: color-mix(in srgb, var(--cc) 10%, transparent);
+}
+.starlight-aside__icon {
+  position: relative;
+  width: 15px;
+  height: 15px;
+  margin-inline: 5.5px;
+  font-size: 15px;
+  color: var(--cc);
+}
+.starlight-aside code {
+  background-color: var(--sl-color-bg-inline-code);
+}
+/* Each word of inline code stays whole; see src/lib/rehype-code-words.mjs. */
+.ns-word {
+  white-space: nowrap;
+}
+.sl-markdown-content table {
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--sl-color-hairline-shade);
+  border-radius: 12px;
+  font-size: var(--sl-text-sm);
+}
+.sl-markdown-content tr:first-child th:first-child {
+  border-start-start-radius: 11px;
+}
+.sl-markdown-content tr:first-child th:last-child {
+  border-start-end-radius: 11px;
+}
+.sl-markdown-content tr:last-child td {
+  border-bottom: 0;
+}
+/* Starlight lets tables scroll in their own box on narrow screens; on wider ones they fill the
+   column. */
+@media (min-width: 50em) {
+  .sl-markdown-content table {
+    display: table;
+    width: 100%;
+  }
+}
+.sl-markdown-content :is(th, td) {
+  padding: 0.625rem 0.875rem;
+  border-bottom: 1px solid var(--sl-color-hairline-shade);
+  vertical-align: top;
+}
+.sl-markdown-content th {
+  background-color: var(--sl-color-gray-7);
+  color: var(--sl-color-gray-3);
+  font-size: var(--sl-text-xs);
+  font-weight: 600;
+  text-align: start;
+}
+.sl-markdown-content td:first-child code {
+  white-space: nowrap;
+}
+
+/* Wide tables scroll inside their own box rather than the page. */
+.ns-table {
+  overflow-x: auto;
+  border: 1px solid var(--sl-color-hairline-shade);
+  border-radius: 10px;
+}
+.ns-table table {
+  margin: 0;
+  min-width: 36rem;
+  border: 0;
+  border-radius: 0;
+}
+.ns-table tr:last-child td {
+  border-bottom: 0;
+}
+
+/* The home page draws its own title, so the title panel above its content is left empty. */
+.content-panel:has(> .sl-container:empty) {
+  display: none;
+}
+
+/* Starlight's link cards and pager, flattened to match the rest of the page. */
+.sl-markdown-content .sl-link-card,
+.pagination-links a {
+  border-color: var(--sl-color-hairline-light);
+  border-radius: 12px;
+  box-shadow: none;
+}
+.pagination-links a > span {
+  font-size: var(--sl-text-sm);
+  font-weight: 500;
+  color: var(--ns-page);
+}
+.pagination-links .link-title {
+  font-size: var(--sl-text-base);
+  font-weight: 600;
+}
+.pagination-links svg {
+  color: var(--ns-page);
+}

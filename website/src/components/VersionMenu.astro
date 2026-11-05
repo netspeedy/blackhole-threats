@@ -1,0 +1,311 @@
+---
+// The chevron after the name in the header. It opens a list of every docs line with its newest
+// release, the line being read ticked and the latest marked, then that line's release notes and
+// every release.
+// Choosing a line opens the same page in it when the page exists there, or the line's first page
+// when it doesn't. An archived line only knows itself when it's built, so it fetches the list from
+// the site root when it loads.
+import { icons } from "../lib/icons";
+import { docs, links, siteRoot } from "../lib/site";
+
+const current = docs.versions.find((version) => version.version === docs.current)!;
+---
+
+<ns-version-menu
+  class="ns-version-menu"
+  data-archived={docs.archived ? "" : undefined}
+  data-current={docs.current}
+  data-base={current.url}
+  data-root={siteRoot}
+>
+  <button
+    class="ns-version"
+    type="button"
+    aria-label={`Documentation version, ${docs.current}`}
+    title="Documentation version"
+    aria-expanded="false"
+    aria-controls="ns-versions"
+  >
+    <svg viewBox="0 0 24 24" aria-hidden="true" set:html={icons.chevron} />
+  </button>
+  <div id="ns-versions" class="ns-versions" hidden>
+    <p id="ns-versions-title">Documentation version</p>
+    <ul aria-labelledby="ns-versions-title">
+      {
+        docs.versions.map(({ version, release, url, latest }) => (
+          <li>
+            <a href={url} data-version={version} aria-current={version === docs.current ? "true" : undefined}>
+              {release ? (
+                <>
+                  <span class="ns-line">{version}</span>
+                  <span class="ns-release">{release}</span>
+                  <span class="ns-latest">{latest && "Latest"}</span>
+                </>
+              ) : (
+                <span class="ns-word">The latest docs</span>
+              )}
+              <svg class="ns-tick" viewBox="0 0 24 24" aria-hidden="true" set:html={icons.check} />
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+    <hr />
+    <a class="ns-out" href={current.notes}>
+      <svg viewBox="0 0 24 24" aria-hidden="true" set:html={icons.tag} />
+      Release notes for {current.release}
+      <svg class="ns-external" viewBox="0 0 24 24" aria-hidden="true" set:html={icons.external} />
+    </a>
+    <a class="ns-out" href={links.releases}>
+      <svg viewBox="0 0 24 24" aria-hidden="true" set:html={icons.clock} />
+      All releases
+      <svg class="ns-external" viewBox="0 0 24 24" aria-hidden="true" set:html={icons.external} />
+    </a>
+  </div>
+</ns-version-menu>
+
+<script>
+  import { loadVersions, samePageIn } from "../lib/versions";
+
+  // A disclosure of links: the button opens and closes it, and Escape, a click outside or moving
+  // focus elsewhere closes it.
+  class VersionMenu extends HTMLElement {
+    connectedCallback() {
+      const button = this.querySelector<HTMLButtonElement>(".ns-version")!;
+      const panel = this.querySelector<HTMLElement>(".ns-versions")!;
+      const list = panel.querySelector("ul")!;
+      const { base = "", root = "/", current } = this.dataset;
+
+      const close = (refocus: boolean) => {
+        if (panel.hidden) return;
+        panel.hidden = true;
+        button.setAttribute("aria-expanded", "false");
+        if (refocus) button.focus();
+      };
+      button.addEventListener("click", () => {
+        panel.hidden = !panel.hidden;
+        button.setAttribute("aria-expanded", String(!panel.hidden));
+        // With many lines the list scrolls, so bring the one being read into view.
+        if (!panel.hidden) list.querySelector('[aria-current="true"]')?.scrollIntoView({ block: "nearest" });
+      });
+      this.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") close(true);
+      });
+      document.addEventListener("pointerdown", (event) => {
+        if (!this.contains(event.target as Node)) close(false);
+      });
+      document.addEventListener("focusin", (event) => {
+        if (!this.contains(event.target as Node)) close(false);
+      });
+
+      list.addEventListener("click", async (event) => {
+        const link = (event.target as Element).closest<HTMLAnchorElement>("a[data-version]");
+        if (!link || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        event.preventDefault();
+        location.href = await samePageIn(link.getAttribute("href")!, base);
+      });
+
+      if (this.dataset.archived === undefined) return;
+      // Rows are copies of this line's own row, which keeps the styles' scope attributes.
+      loadVersions(root).then((versions) => {
+        const template = list.querySelector(".ns-line")?.closest("li");
+        if (!versions || !template) return;
+        list.replaceChildren(
+          ...versions.map(({ version, release, url, latest }) => {
+            const item = template.cloneNode(true) as HTMLLIElement;
+            const link = item.querySelector("a")!;
+            link.href = version === current ? base : url;
+            link.dataset.version = version;
+            if (version === current) link.setAttribute("aria-current", "true");
+            else link.removeAttribute("aria-current");
+            item.querySelector(".ns-line")!.textContent = version;
+            item.querySelector(".ns-release")!.textContent = release;
+            item.querySelector(".ns-latest")!.textContent = latest ? "Latest" : "";
+            return item;
+          }),
+        );
+      });
+    }
+  }
+
+  customElements.define("ns-version-menu", VersionMenu);
+</script>
+
+<style>
+  /* Static, so the list is placed against the name in the header rather than the chevron. */
+  .ns-version-menu {
+    display: flex;
+    flex: none;
+  }
+  .ns-version {
+    display: grid;
+    place-items: center;
+    width: 1.625rem;
+    height: 1.625rem;
+    padding: 0;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--sl-color-gray-3);
+    cursor: pointer;
+  }
+  .ns-version:hover,
+  .ns-version[aria-expanded="true"] {
+    background-color: var(--ns-hover-fill);
+    color: var(--sl-color-white);
+  }
+  .ns-version svg {
+    width: 0.875rem;
+    height: 0.875rem;
+    stroke-width: 2.2;
+    transition: transform 0.15s;
+  }
+  .ns-version[aria-expanded="true"] svg {
+    transform: rotate(180deg);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ns-version svg {
+      transition: none;
+    }
+  }
+  svg {
+    width: 0.9375rem;
+    height: 0.9375rem;
+    flex: none;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.9;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* The heading and the release links stay put, and the lines scroll between them: about nine
+     at most, and never past the bottom of the window, since the header doesn't scroll. */
+  .ns-versions {
+    position: absolute;
+    inset-inline-start: -0.25rem;
+    top: calc(100% - 0.25rem);
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    width: 18rem;
+    max-height: calc(100dvh - var(--sl-nav-height) - 1rem);
+    padding: 6px;
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 12px;
+    background-color: var(--ns-menu-bg);
+    box-shadow: var(--ns-menu-shadow);
+    font-size: var(--sl-text-sm);
+  }
+  #ns-versions-title {
+    margin: 0;
+    padding: 0.5rem 0.625rem 0.375rem;
+    font-size: var(--sl-text-xs);
+    font-weight: 500;
+    color: var(--sl-color-gray-3);
+  }
+  .ns-versions[hidden] {
+    display: none;
+  }
+  ul {
+    flex: 0 1 auto;
+    min-height: 0;
+    max-height: 20.5rem;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    list-style: none;
+  }
+  /* Every row has the same columns, so the lines and releases line up and the Latest badge and the
+     tick each keep their own slot on the right. */
+  li a {
+    display: grid;
+    grid-template-columns: 3.25rem minmax(0, 1fr) auto 1rem;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.5rem 0.625rem;
+    border-radius: 8px;
+    color: var(--sl-color-gray-3);
+    text-decoration: none;
+  }
+  li a:hover,
+  li a:focus-visible {
+    background-color: var(--ns-hover-fill);
+  }
+  li a[aria-current="true"] {
+    background-color: var(--ns-hover-fill);
+  }
+  .ns-line {
+    font-family: var(--__sl-font-mono);
+    font-size: var(--sl-text-xs);
+    font-weight: 600;
+    color: var(--sl-color-white);
+  }
+  .ns-release {
+    font-family: var(--__sl-font-mono);
+    font-size: var(--sl-text-xs);
+  }
+  .ns-word {
+    grid-column: 1 / 4;
+    color: var(--sl-color-white);
+  }
+  .ns-latest:not(:empty) {
+    padding: 0.0625rem 0.4375rem;
+    border-radius: 999px;
+    background-color: color-mix(in srgb, var(--ns-ok) 14%, transparent);
+    font-size: var(--sl-text-2xs);
+    font-weight: 600;
+    color: var(--ns-ok);
+  }
+  .ns-tick {
+    width: 1rem;
+    height: 1rem;
+    stroke-width: 2;
+    color: var(--sl-color-text-accent);
+    visibility: hidden;
+  }
+  [aria-current="true"] .ns-tick {
+    visibility: visible;
+  }
+  hr {
+    height: 1px;
+    margin: 0.375rem 0.25rem;
+    border: 0;
+    background-color: var(--sl-color-hairline-shade);
+  }
+  .ns-out {
+    display: flex;
+    align-items: center;
+    gap: 0.5625rem;
+    padding: 0.4375rem 0.625rem;
+    border-radius: 8px;
+    color: var(--sl-color-gray-2);
+    text-decoration: none;
+  }
+  .ns-out:hover,
+  .ns-out:focus-visible {
+    background-color: var(--ns-hover-fill);
+    color: var(--sl-color-white);
+  }
+  .ns-external {
+    width: 0.75rem;
+    height: 0.75rem;
+    margin-inline-start: auto;
+    color: var(--sl-color-gray-3);
+  }
+
+  /* On phones the list spans the screen under the bar, wherever the pill sits. */
+  @media (max-width: 49.99rem) {
+    .ns-version-menu {
+      position: static;
+    }
+    .ns-versions {
+      position: fixed;
+      top: calc(var(--ns-bar) - 0.25rem);
+      inset-inline: 1rem;
+      width: auto;
+    }
+  }
+</style>

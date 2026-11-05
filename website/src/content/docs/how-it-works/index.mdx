@@ -1,0 +1,99 @@
+---
+title: How it works
+description: What blackhole-threats does at startup, on each refresh and when it stops, with the log lines each step writes.
+---
+
+import { Steps } from "@astrojs/starlight/components";
+import NextSteps from "../../../components/NextSteps.astro";
+
+blackhole-threats is a loop around one job: build the route table the feeds describe, then make
+the BGP table match it. This page follows a run from start to finish. [Feeds and
+communities](/blackhole-threats/how-it-works/feeds/) and [BGP
+announcements](/blackhole-threats/how-it-works/bgp/) go into the two halves in detail.
+
+## Startup
+
+<Steps>
+
+1. It reads the flags and sets up logging. A bad `-log-format` or `-log-level` stops it here.
+
+2. It loads the YAML file and decodes it strictly, so an unknown key is an error. Then it checks
+   that the local ASN isn't 0, that the router ID is an IPv4 address and that every feed has a
+   path or an `http://` or `https://` URL.
+
+3. It adds the feeds from any `-feed` flags to the ones in the file, checks those too, and checks
+   that `-refresh-rate` is more than zero. With `-check-config` it prints
+   `configuration OK: N feed(s)` and exits here.
+
+4. It logs `Starting blackhole-threats` with the build details and `Loaded runtime configuration`
+   with what it's about to run with, then starts the embedded GoBGP server with the `gobgp`
+   block: it listens on the BGP port and starts dialling every neighbor.
+
+5. It logs `Started blackhole-threats` and runs the first refresh straight away.
+
+</Steps>
+
+Anything that fails before the first refresh ends the process with a `level=fatal` line and exit
+code 1.
+
+## The refresh loop
+
+After each refresh the daemon waits for the refresh interval, two hours unless `-refresh-rate`
+says otherwise, and runs the next one. The wait starts when a refresh finishes, so the interval is
+the gap between refreshes rather than a fixed schedule.
+
+`SIGUSR1` cuts the wait short: the daemon logs `Refresh signal received` and refreshes now, and
+the next interval counts from the end of that refresh. A signal re-reads the feeds; it doesn't
+reload the YAML file or the flags, which needs a restart.
+
+These are the lines from a daemon running the [quickstart](/blackhole-threats/quickstart/)'s lab
+config. The first refresh announces three routes. Before the second, one address was taken out of
+the feed and another added, so one route is withdrawn and one announced. Before the third, the
+feed file was moved away, so the community keeps the routes it had:
+
+```text title="Output"
+time=2026-11-05T04:40:51Z level=info msg="Started blackhole-threats"
+time=2026-11-05T04:40:51Z level=info msg="Parsed threat feed" prefixes_read=4 source=./local-feed.txt
+time=2026-11-05T04:40:51Z level=info msg="Prepared community routes" community=64520:1200 feed_count=1 prefixes_read=4 prefixes_summarized=3
+time=2026-11-05T04:40:51Z level=info msg="Refresh completed" active_routes=3 announced=3 duration_ms=0 withdrawn=0
+time=2026-11-05T04:40:51Z level=info msg="Refresh signal received" signal="user defined signal 1"
+time=2026-11-05T04:40:51Z level=info msg="Parsed threat feed" prefixes_read=4 source=./local-feed.txt
+time=2026-11-05T04:40:51Z level=info msg="Prepared community routes" community=64520:1200 feed_count=1 prefixes_read=4 prefixes_summarized=3
+time=2026-11-05T04:40:51Z level=info msg="Refresh completed" active_routes=3 announced=1 duration_ms=0 withdrawn=1
+time=2026-11-05T04:40:51Z level=info msg="Refresh signal received" signal="user defined signal 1"
+time=2026-11-05T04:40:51Z level=error msg="Failed to read threat feed" error="open ./local-feed.txt: no such file or directory" source=./local-feed.txt
+time=2026-11-05T04:40:51Z level=warning msg="Keeping previous community routes after feed errors" carried_forward=3 community=64520:1200 failed_feed_count=1 failed_feeds=[./local-feed.txt] feed_count=1
+time=2026-11-05T04:40:51Z level=info msg="Refresh completed" active_routes=3 announced=0 duration_ms=0 withdrawn=0
+```
+
+## One refresh, step by step
+
+| Step | What happens | Log line |
+| --- | --- | --- |
+| Group | Feeds are grouped by community, and feeds without one get `<local ASN>:666` | |
+| Read | Each group's feeds are read at the same time; groups are read one after another | `Parsed threat feed`, `Failed to read threat feed` |
+| Summarise | Each group's prefixes are deduplicated and merged into as few routes as cover them | `Prepared community routes` |
+| Carry forward | A group with a failed feed keeps the routes it had after the last refresh | `Keeping previous community routes after feed errors` |
+| Reconcile | Routes that are gone or whose communities changed are withdrawn; new and changed ones are announced | `Refresh completed` |
+
+A prefix that two groups both produce becomes one route carrying both communities. If GoBGP
+refuses a route while the daemon is withdrawing or announcing, the refresh stops, the daemon logs
+`Route sync failed` and exits with code 1.
+
+## Stopping and restarting
+
+`SIGINT` or `SIGTERM` stops the daemon cleanly: it logs `Shutdown requested`, stops the GoBGP
+server and logs `Stopped blackhole-threats`. Stopping the BGP server closes its sessions, and your
+routers drop every route it announced.
+
+Nothing is saved between runs. After a restart the first refresh rebuilds the table from the
+feeds, and a group whose feed is failing at that moment has nothing to carry forward, so it
+announces no routes until a later refresh reads the feed. Avoid restarting during a feed outage
+if you depend on those routes.
+
+<NextSteps
+  links={[
+    { title: "Feeds and communities", href: "/blackhole-threats/how-it-works/feeds/", description: "What counts as a failure, how summarising works and how to pick communities." },
+    { title: "BGP announcements", href: "/blackhole-threats/how-it-works/bgp/", description: "What each route carries, which peers get it and when it's withdrawn." },
+  ]}
+/>
