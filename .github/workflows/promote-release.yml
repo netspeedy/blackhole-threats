@@ -74,8 +74,8 @@ jobs:
             exit 1
           fi
 
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "netspeedybot"
+          git config user.email "45371234+netspeedybot@users.noreply.github.com"
           git tag -a "${{ steps.promote.outputs.stable_tag }}" "${{ steps.promote.outputs.release_sha }}" \
             -m "Promote ${{ steps.promote.outputs.prerelease_tag }} to ${{ steps.promote.outputs.stable_tag }}"
           git push "https://x-access-token:${RELEASE_AUTOMATION_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
