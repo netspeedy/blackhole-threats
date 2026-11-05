@@ -82,6 +82,8 @@ community added together.
 - A feed's `prefixes_read` drops to 0, or far below its usual number. An empty or broken response
   that isn't an error withdraws that community's routes rather than keeping them.
 - `active_routes` jumps or falls sharply after a feed or config change.
+- `Dropped prefix shorter than the minimum length` from a feed that doesn't usually list such
+  broad prefixes. Something upstream has probably gone wrong with it.
 - No `Refresh completed` for longer than the refresh interval.
 - The service keeps restarting with a `level=fatal` line: the config or a flag is wrong.
 

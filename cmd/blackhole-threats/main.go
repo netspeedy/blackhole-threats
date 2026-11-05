@@ -38,16 +38,18 @@ func logStartup(cfgPath string, cfg config.File, configuredFeeds, extraFeeds int
 	}).Info("Starting blackhole-threats")
 
 	log.WithFields(log.Fields{
-		"config_path":       cfgPath,
-		"run_mode":          runMode(runOnce),
-		"refresh_interval":  refreshInterval.String(),
-		"configured_feeds":  configuredFeeds,
-		"cli_feeds":         extraFeeds,
-		"total_feeds":       configuredFeeds + extraFeeds,
-		"peer_count":        len(cfg.GoBGP.Neighbors),
-		"local_as":          cfg.GoBGP.Global.Config.As,
-		"router_id":         cfg.GoBGP.Global.Config.RouterId,
-		"default_community": config.DefaultCommunity(cfg.GoBGP.Global.Config.As).String(),
+		"config_path":            cfgPath,
+		"run_mode":               runMode(runOnce),
+		"refresh_interval":       refreshInterval.String(),
+		"configured_feeds":       configuredFeeds,
+		"cli_feeds":              extraFeeds,
+		"total_feeds":            configuredFeeds + extraFeeds,
+		"peer_count":             len(cfg.GoBGP.Neighbors),
+		"local_as":               cfg.GoBGP.Global.Config.As,
+		"router_id":              cfg.GoBGP.Global.Config.RouterId,
+		"default_community":      config.DefaultCommunity(cfg.GoBGP.Global.Config.As).String(),
+		"min_ipv4_prefix_length": cfg.Limits.MinIPv4(),
+		"min_ipv6_prefix_length": cfg.Limits.MinIPv6(),
 	}).Info("Loaded runtime configuration")
 }
 
@@ -130,7 +132,7 @@ func main() {
 	}
 	logStartup(flags.cfgPath, cfg, len(cfg.Feeds), len(flags.extraFeeds), flags.refreshRate, flags.once)
 
-	router, err := bgp.New(&cfg.GoBGP)
+	router, err := bgp.New(&cfg.GoBGP, cfg.Limits)
 	if err != nil {
 		log.WithError(err).Fatal("Failed to start BGP server")
 	}

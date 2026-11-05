@@ -15,9 +15,11 @@ The next hop on the routes is the daemon's router ID, or `::ffff:<router ID>` fo
 blackhole policy replaces it, so it never needs to be reachable.
 
 It's also worth limiting how many prefixes the router accepts from the session, if your platform
-supports it, so a feed that suddenly lists far more than usual can't flood the table. Note that
-blackhole-threats doesn't filter short prefixes out of feeds; a feed that lists `0.0.0.0/0` gets
-it announced. A router policy that rejects very short prefixes from this peer is cheap insurance.
+supports it, so a feed that suddenly lists far more than usual can't flood the table.
+blackhole-threats drops prefixes shorter than `/8` for IPv4 and `/16` for IPv6 before it announces
+anything (the config's [`limits`](/blackhole-threats/reference/configuration/#limits) change
+those), so a feed that lists `0.0.0.0/0` doesn't get it announced. A router policy that rejects
+very short prefixes from this peer as well is still cheap insurance.
 
 ## RouterOS v7
 

@@ -3,8 +3,8 @@ title: Configuration
 description: Write the YAML file blackhole-threats runs from, the local BGP settings, the peers and the feeds, and check it before it goes live.
 ---
 
-blackhole-threats reads one YAML file with two top-level sections: `gobgp`, the BGP settings, and
-`feeds`, the threat feeds. `-conf` names the file; without it the daemon reads
+blackhole-threats reads one YAML file with two main sections, `gobgp`, the BGP settings, and
+`feeds`, the threat feeds, plus an optional `limits` section. `-conf` names the file; without it the daemon reads
 `blackhole-threats.yaml` in the working directory. The packaged service uses
 `/etc/blackhole-threats.yaml` and the container `/config/blackhole-threats.yaml`.
 
@@ -116,6 +116,24 @@ every feed an explicit community.
 You can add feeds without editing the file with `-feed`, which you can repeat. Those always use
 the default community.
 
+## Limits
+
+blackhole-threats won't announce an IPv4 prefix shorter than `/8` or an IPv6 prefix shorter than
+`/16`. If a feed lists one, such as `0.0.0.0/0`, it's dropped with a
+`Dropped prefix shorter than the minimum length` warning and the rest of the feed is used as
+normal. You only need a `limits` section to change those floors:
+
+```yaml
+limits:
+  min_ipv4_prefix_length: 16
+  min_ipv6_prefix_length: 32
+```
+
+The limits apply to every feed. Raising them is a cheap guard if none of your feeds should ever
+list anything as broad as a `/8`. Lowering them is rarely what you want: a route that short
+blackholes a large part of the internet. The lowest each one goes is 1, so a default route can
+never be announced.
+
 ## Check it and roll it out
 
 Check the file, then run a single refresh with it before the daemon uses it for real:
@@ -126,7 +144,7 @@ blackhole-threats -conf ./staging.yaml -once
 ```
 
 `-check-config` catches YAML mistakes, unknown keys, a zero ASN, a router ID that isn't IPv4,
-bad ports, bad communities and unsupported feed URLs. It doesn't start GoBGP, so GoBGP's own
+bad ports, bad communities, limits out of range and unsupported feed URLs. It doesn't start GoBGP, so GoBGP's own
 objections to the `gobgp` block only show up when the daemon starts. `-once` does start it, and
 reads every feed, so it shows whether the feeds are reachable and how many routes they make. Give
 the copy you test with `-once` a `port` other than 179 if the live daemon is running on the same

@@ -22,6 +22,15 @@ var ErrMissingFeedURL = errors.New("missing feed URL")
 var ErrUnsupportedFeedScheme = errors.New("unsupported feed scheme")
 var ErrInvalidNeighborPort = errors.New("invalid neighbor endpoint port")
 var ErrConflictingNeighborPort = errors.New("conflicting neighbor endpoint port")
+var ErrInvalidPrefixLimit = errors.New("invalid minimum prefix length")
+
+// The shortest prefixes announced when limits doesn't say otherwise. Nothing shorter than a /8 or
+// a /16 belongs in a blackhole feed, and a feed line such as 0.0.0.0/0 or ::/0 would otherwise
+// tell every router to drop everything.
+const (
+	DefaultMinIPv4PrefixLength = 8
+	DefaultMinIPv6PrefixLength = 16
+)
 
 type Community uint32
 
@@ -71,8 +80,54 @@ func (f Feed) String() string {
 }
 
 type File struct {
-	GoBGP oc.BgpConfigSet `yaml:"gobgp"`
-	Feeds []Feed          `yaml:"feeds"`
+	GoBGP  oc.BgpConfigSet `yaml:"gobgp"`
+	Feeds  []Feed          `yaml:"feeds"`
+	Limits Limits          `yaml:"limits"`
+}
+
+// Limits sets the shortest prefix, per address family, that blackhole-threats will announce. A
+// prefix from a feed that's shorter is dropped rather than announced. The fields are pointers so
+// that a key left out takes the default while an explicit 0 is rejected: there's deliberately no
+// way to turn the check off.
+type Limits struct {
+	MinIPv4PrefixLength *int `yaml:"min_ipv4_prefix_length"`
+	MinIPv6PrefixLength *int `yaml:"min_ipv6_prefix_length"`
+}
+
+// MinIPv4 returns the shortest IPv4 prefix length allowed.
+func (l Limits) MinIPv4() int {
+	if l.MinIPv4PrefixLength == nil {
+		return DefaultMinIPv4PrefixLength
+	}
+	return *l.MinIPv4PrefixLength
+}
+
+// MinIPv6 returns the shortest IPv6 prefix length allowed.
+func (l Limits) MinIPv6() int {
+	if l.MinIPv6PrefixLength == nil {
+		return DefaultMinIPv6PrefixLength
+	}
+	return *l.MinIPv6PrefixLength
+}
+
+// MinPrefixLength returns the shortest prefix length allowed for addr's address family.
+func (l Limits) MinPrefixLength(addr netip.Addr) int {
+	if addr.Is4() {
+		return l.MinIPv4()
+	}
+	return l.MinIPv6()
+}
+
+// Validate checks each limit is a usable prefix length for its family. 0 is refused because it
+// would let a default route through.
+func (l Limits) Validate() error {
+	if v := l.MinIPv4(); v < 1 || v > 32 {
+		return fmt.Errorf("%w: limits.min_ipv4_prefix_length is %d, want 1 to 32", ErrInvalidPrefixLimit, v)
+	}
+	if v := l.MinIPv6(); v < 1 || v > 128 {
+		return fmt.Errorf("%w: limits.min_ipv6_prefix_length is %d, want 1 to 128", ErrInvalidPrefixLimit, v)
+	}
+	return nil
 }
 
 type FeedList []Feed
@@ -123,6 +178,10 @@ func (cfg File) Validate() error {
 	routerID, err := netip.ParseAddr(cfg.GoBGP.Global.Config.RouterId)
 	if err != nil || !routerID.Is4() {
 		return fmt.Errorf("%w: %q", ErrInvalidRouterID, cfg.GoBGP.Global.Config.RouterId)
+	}
+
+	if err := cfg.Limits.Validate(); err != nil {
+		return err
 	}
 
 	for i, feed := range cfg.Feeds {

@@ -3,8 +3,8 @@ title: Config keys
 description: Every key in the blackhole-threats YAML file, the GoBGP settings it passes through, and what makes the file fail to load.
 ---
 
-The config is one YAML document with two top-level keys, `gobgp` and `feeds`. It's decoded
-strictly: a key blackhole-threats or GoBGP doesn't know stops the daemon rather than being
+The config is one YAML document with three top-level keys: `gobgp`, `feeds` and the optional
+`limits`. It's decoded strictly: a key blackhole-threats or GoBGP doesn't know stops the daemon rather than being
 ignored. The [configuration guide](/blackhole-threats/guides/configuration/) walks through
 writing one.
 
@@ -75,6 +75,28 @@ A list, one entry per feed.
 always use the default. For a local ASN above 65535 the default doesn't fit (only the ASN's low
 16 bits are kept, so AS 4200000000 gives `59904:666`), so set `community` on every feed.
 
+## limits
+
+The shortest prefix blackhole-threats will announce, for each address family. Both keys are
+optional, and a key you leave out keeps its default.
+
+| Key | Type | Default | What it is |
+| --- | --- | --- | --- |
+| `min_ipv4_prefix_length` | integer | `8` | The shortest IPv4 prefix announced, from 1 to 32 |
+| `min_ipv6_prefix_length` | integer | `16` | The shortest IPv6 prefix announced, from 1 to 128 |
+
+```yaml
+limits:
+  min_ipv4_prefix_length: 8
+  min_ipv6_prefix_length: 16
+```
+
+A prefix from a feed that's shorter than its family's limit is dropped with a warning and the
+rest of the feed is used as normal, so a feed line of `0.0.0.0/0` or `::/0` is never announced.
+Summarising never merges prefixes into one shorter than the limit either. There's no way to turn
+the check off: 0 isn't accepted. [Feeds and
+communities](/blackhole-threats/how-it-works/feeds/#short-prefixes) has the details.
+
 ## What stops the file loading
 
 `-check-config` and startup both reject:
@@ -88,6 +110,8 @@ always use the default. For a local ASN above 65535 the default doesn't fit (onl
 - a feed with an empty `url`, or a scheme other than `http` or `https`, such as `ftp://` or
   `file://`
 - a `community` that isn't two numbers from 0 to 65535 separated by one colon
+- a `limits.min_ipv4_prefix_length` outside 1 to 32, or a `limits.min_ipv6_prefix_length`
+  outside 1 to 128
 
 The [troubleshooting guide](/blackhole-threats/guides/troubleshooting/#the-config-wont-load) has
 the message each one logs.

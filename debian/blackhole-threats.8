@@ -18,6 +18,12 @@ loads a GoBGP configuration and a set of local or remote threat feeds from a
 YAML configuration file, extracts IPv4 and IPv6 prefixes, summarises them, and
 announces the resulting routes over BGP for remote-triggered blackhole use.
 .PP
+Prefixes shorter than /8 for IPv4 or /16 for IPv6 are dropped with a warning
+rather than announced, so a feed that lists a default route cannot blackhole
+everything. The
+.B limits
+section of the configuration file changes these minimum lengths.
+.PP
 The daemon maintains the currently advertised route set across refresh cycles.
 If a feed refresh fails for a community, the last known-good routes for that
 community are kept until the next successful refresh.

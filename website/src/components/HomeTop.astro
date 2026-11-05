@@ -56,8 +56,8 @@ function yaml(line: string): string {
 }
 
 const refresh = ["blackhole-threats -conf lab.yaml -once"];
-const refreshOutput = `time=2026-11-05T04:38:15Z level=info msg="Parsed threat feed" prefixes_read=4 source=./local-feed.txt
-time=2026-11-05T04:38:15Z level=info msg="Prepared community routes" community=64520:1200 feed_count=1 prefixes_read=4 prefixes_summarized=3
+const refreshOutput = `time=2026-11-05T04:38:15Z level=info msg="Parsed threat feed" prefixes_dropped=0 prefixes_read=4 source=./local-feed.txt
+time=2026-11-05T04:38:15Z level=info msg="Prepared community routes" community=64520:1200 feed_count=1 prefixes_dropped=0 prefixes_read=4 prefixes_summarized=3
 time=2026-11-05T04:38:15Z level=info msg="Refresh completed" active_routes=3 announced=3 duration_ms=2 withdrawn=0
 time=2026-11-05T04:38:15Z level=info msg="Completed single refresh cycle"`;
 const config = `gobgp:
