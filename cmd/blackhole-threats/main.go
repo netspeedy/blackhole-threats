@@ -51,35 +51,54 @@ func logStartup(cfgPath string, cfg config.File, configuredFeeds, extraFeeds int
 	}).Info("Loaded runtime configuration")
 }
 
+// cliFlags holds the command-line flags' values.
+type cliFlags struct {
+	cfgPath     string
+	checkConfig bool
+	debug       bool
+	logFormat   string
+	logLevel    string
+	once        bool
+	refreshRate time.Duration
+	showVersion bool
+	extraFeeds  config.FeedList
+}
+
+// defineFlags registers every command-line flag on fs. main registers them on flag.CommandLine,
+// and the CLI reference test on a set of its own.
+func defineFlags(fs *flag.FlagSet, f *cliFlags) {
+	fs.StringVar(&f.cfgPath, "conf", "blackhole-threats.yaml", "Configuration file")
+	fs.BoolVar(&f.checkConfig, "check-config", false, "Validate configuration and exit")
+	fs.BoolVar(&f.debug, "debug", false, "Enable debug logging")
+	fs.StringVar(&f.logFormat, "log-format", "logfmt", "Log format (logfmt or json)")
+	fs.StringVar(&f.logLevel, "log-level", "info", "Log level (panic, fatal, error, warn, info, debug, trace)")
+	fs.BoolVar(&f.once, "once", false, "Run a single refresh cycle and exit")
+	fs.DurationVar(&f.refreshRate, "refresh-rate", 2*time.Hour, "Refresh timer")
+	fs.BoolVar(&f.showVersion, "version", false, "Print version information and exit")
+	fs.Var(&f.extraFeeds, "feed", "Threat intelligence feed (use multiple times)")
+}
+
 func main() {
 	log.SetFormatter(logging.OperatorFormatter{})
 	log.SetOutput(os.Stdout)
 
-	cfgPath := flag.String("conf", "blackhole-threats.yaml", "Configuration file")
-	checkConfig := flag.Bool("check-config", false, "Validate configuration and exit")
-	debug := flag.Bool("debug", false, "Enable debug logging")
-	logFormat := flag.String("log-format", "logfmt", "Log format (logfmt or json)")
-	logLevel := flag.String("log-level", "info", "Log level (panic, fatal, error, warn, info, debug, trace)")
-	once := flag.Bool("once", false, "Run a single refresh cycle and exit")
-	refreshRate := flag.Duration("refresh-rate", 2*time.Hour, "Refresh timer")
-	showVersion := flag.Bool("version", false, "Print version information and exit")
-	var extraFeeds config.FeedList
-	flag.Var(&extraFeeds, "feed", "Threat intelligence feed (use multiple times)")
+	var flags cliFlags
+	defineFlags(flag.CommandLine, &flags)
 	flag.Parse()
 
-	if *showVersion {
+	if flags.showVersion {
 		fmt.Printf("blackhole-threats %s\ncommit: %s\nbuilt: %s\n", buildinfo.DisplayVersion(), buildinfo.Commit, buildinfo.BuildDate)
 		return
 	}
 
-	formatter, err := logging.NewFormatter(*logFormat)
+	formatter, err := logging.NewFormatter(flags.logFormat)
 	if err != nil {
-		log.WithField("log_format", *logFormat).WithError(err).Fatal("Invalid log format")
+		log.WithField("log_format", flags.logFormat).WithError(err).Fatal("Invalid log format")
 	}
 	log.SetFormatter(formatter)
 
-	selectedLogLevel := *logLevel
-	if *debug {
+	selectedLogLevel := flags.logLevel
+	if flags.debug {
 		selectedLogLevel = "debug"
 	}
 
@@ -89,7 +108,7 @@ func main() {
 	}
 	log.SetLevel(parsedLogLevel)
 
-	cfg, err := config.Load(*cfgPath)
+	cfg, err := config.Load(flags.cfgPath)
 	if err != nil {
 		log.WithError(err).Fatal("Failed to load configuration")
 	}
@@ -98,18 +117,18 @@ func main() {
 	}
 
 	feeds := append([]config.Feed{}, cfg.Feeds...)
-	feeds = append(feeds, extraFeeds...)
+	feeds = append(feeds, flags.extraFeeds...)
 	if err := config.ValidateFeeds(feeds); err != nil {
 		log.WithError(err).Fatal("Invalid feed configuration")
 	}
-	if *refreshRate <= 0 {
-		log.WithField("refresh_interval", *refreshRate).Fatal("Refresh timer must be greater than zero")
+	if flags.refreshRate <= 0 {
+		log.WithField("refresh_interval", flags.refreshRate).Fatal("Refresh timer must be greater than zero")
 	}
-	if *checkConfig {
+	if flags.checkConfig {
 		fmt.Printf("configuration OK: %d feed(s)\n", len(feeds))
 		return
 	}
-	logStartup(*cfgPath, cfg, len(cfg.Feeds), len(extraFeeds), *refreshRate, *once)
+	logStartup(flags.cfgPath, cfg, len(cfg.Feeds), len(flags.extraFeeds), flags.refreshRate, flags.once)
 
 	router, err := bgp.New(&cfg.GoBGP)
 	if err != nil {
@@ -128,7 +147,7 @@ func main() {
 	defer stop()
 
 	log.Info("Started blackhole-threats")
-	if err := router.Run(ctx, feeds, *refreshRate, sigC, *once); err != nil {
+	if err := router.Run(ctx, feeds, flags.refreshRate, sigC, flags.once); err != nil {
 		if stopErr := router.Stop(); stopErr != nil {
 			log.WithError(stopErr).Warn("Failed to stop BGP server cleanly after runtime error")
 		}
@@ -143,7 +162,7 @@ func main() {
 		default:
 			log.Info("Shutdown requested")
 		}
-	} else if *once {
+	} else if flags.once {
 		log.Info("Completed single refresh cycle")
 	}
 
