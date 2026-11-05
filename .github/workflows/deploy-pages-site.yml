@@ -4,9 +4,12 @@ on:
   push:
     branches:
       - main
+  # After a stable APT publish, and after Release Assets, which attaches an outgoing line's docs
+  # archive when a new line ships. Whichever of the two finishes last has the full picture.
   workflow_run:
     workflows:
       - Publish Signed Debian Repository
+      - Release Assets
     types:
       - completed
   workflow_dispatch:
@@ -26,7 +29,7 @@ jobs:
     name: Build Pages Site
     if: |
       github.event_name != 'workflow_run' ||
-      github.event.workflow_run.conclusion == 'success'
+      (github.event.workflow_run.conclusion == 'success' && !contains(github.event.workflow_run.head_branch, '-rc.'))
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -109,6 +112,19 @@ jobs:
           test -f site/blackhole-threats-archive-keyring.gpg
           test -f site/blackhole-threats-archive-keyring.fingerprint.txt
 
+      # Each older line whose last release carries a docs archive (Release Assets attaches one when
+      # the next line ships) is published beside the latest, under /<repo>/vX.Y/.
+      - name: Download archived docs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STABLE_TAG: ${{ steps.published.outputs.stable_tag }}
+        run: |
+          set -euo pipefail
+
+          versions="${RUNNER_TEMP}/docs-versions.json"
+          bash scripts/download-docs-archives.sh "${STABLE_TAG}" "${RUNNER_TEMP}/docs-archives" > "${versions}"
+          printf 'Archived docs published: %s\n' "$(jq -r 'map(.version) | join(", ") | if . == "" then "none" else . end' "${versions}")" >> "${GITHUB_STEP_SUMMARY}"
+
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
@@ -138,6 +154,7 @@ jobs:
             --arg release_url "${release_url}" \
             --arg commit "${STABLE_SHA}" \
             --arg fingerprint "${fingerprint}" \
+            --slurpfile docs_versions "${RUNNER_TEMP}/docs-versions.json" \
             '{
               site_url: $site_url,
               latest_release: {
@@ -145,6 +162,7 @@ jobs:
                 html_url: $release_url
               },
               release_commit: $commit,
+              docs_versions: $docs_versions[0],
               apt_repository: {
                 available: true,
                 url: $site_url,
@@ -157,6 +175,11 @@ jobs:
 
           npm ci --prefix "${WEBSITE_DIR}"
           SITE_METADATA_FILE="${metadata}" make website-build WEBSITE_DIR="${WEBSITE_DIR}"
+          # The archived lines go in before the check, so it follows the version menu's links into them.
+          for archive in "${RUNNER_TEMP}"/docs-archives/*/; do
+            [ -d "${archive}" ] || continue
+            cp -a "${archive%/}" "${WEBSITE_DIR}/dist/"
+          done
           make website-check WEBSITE_DIR="${WEBSITE_DIR}"
           # The snapshot holds the previous site as well as the APT repository. Keep only the
           # repository and the metadata, so files the new site no longer has aren't left published.

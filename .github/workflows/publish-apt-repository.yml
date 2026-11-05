@@ -214,6 +214,27 @@ jobs:
             apt-get "${apt_args[@]}" source blackhole-threats
           )
 
+      # This deploy replaces the whole Pages site, so it carries the archived release lines too.
+      # The script is taken from the workflow's own commit rather than the checkout, which is an
+      # older tag when a release is published again by hand. Leaving the lines out isn't worth
+      # failing the publish over: Deploy Pages Site runs after this and puts them back.
+      - name: Download archived docs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          archives="${RUNNER_TEMP}/docs-archives"
+          versions="${RUNNER_TEMP}/docs-versions.json"
+          script="${RUNNER_TEMP}/download-docs-archives.sh"
+          if ! git show "${GITHUB_SHA}:scripts/download-docs-archives.sh" > "${script}" ||
+            ! bash "${script}" "${RELEASE_REF}" "${archives}" > "${versions}"; then
+            echo "::warning::The archived docs couldn't be downloaded, so this deploy leaves them out until Deploy Pages Site runs after it."
+            rm -rf "${archives}"
+            echo '[]' > "${versions}"
+          fi
+          printf 'Archived docs published: %s\n' "$(jq -r 'map(.version) | join(", ") | if . == "" then "none" else . end' "${versions}")" >> "${GITHUB_STEP_SUMMARY}"
+
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
@@ -236,6 +257,7 @@ jobs:
             --arg release_url "https://github.com/${GITHUB_REPOSITORY}/releases/tag/${RELEASE_REF}" \
             --arg commit "${RELEASE_COMMIT}" \
             --arg fingerprint "${PRETTY_FINGERPRINT}" \
+            --slurpfile docs_versions "${RUNNER_TEMP}/docs-versions.json" \
             '{
               site_url: $site_url,
               latest_release: {
@@ -243,6 +265,7 @@ jobs:
                 html_url: $release_url
               },
               release_commit: $commit,
+              docs_versions: $docs_versions[0],
               apt_repository: {
                 available: true,
                 url: $site_url,
@@ -255,6 +278,11 @@ jobs:
 
           npm ci --prefix "${WEBSITE_DIR}"
           SITE_METADATA_FILE="${metadata}" make website-build WEBSITE_DIR="${WEBSITE_DIR}"
+          # The archived lines go in before the check, so it follows the version menu's links into them.
+          for archive in "${RUNNER_TEMP}"/docs-archives/*/; do
+            [ -d "${archive}" ] || continue
+            cp -a "${archive%/}" "${WEBSITE_DIR}/dist/"
+          done
           make website-check WEBSITE_DIR="${WEBSITE_DIR}"
           cp -a "${WEBSITE_DIR}/dist/." site/
           cp "${metadata}" site/website-metadata.json

@@ -62,11 +62,15 @@ automation.
   colours in `theme.css`. Keep it that way, so a change to a shared file can be
   copied between the sites as it is.
 - The docs are versioned by release line. Only the latest line lives in
-  `website/src/content/docs`; never copy pages into per-version folders. Keep
-  page links root-relative (`/blackhole-threats/...`), so an archived build of
-  a line can rewrite them into its own path. Links to the APT files (`dists/`,
-  `pool/`, the keyring and its fingerprint) are absolute URLs, because they're
-  published beside the build rather than in it.
+  `website/src/content/docs`; never copy pages into per-version folders. When a
+  new minor ships, Release Assets rebuilds the outgoing line from git with
+  `SITE_ARCHIVE=vX.Y`, which serves it under `/blackhole-threats/vX.Y/`, and
+  both Pages workflows publish it beside the latest through
+  `scripts/download-docs-archives.sh`. Keep page links root-relative
+  (`/blackhole-threats/...`): archived builds rewrite them into their own line.
+  Links to the APT files (`dists/`, `pool/`, the keyring and its fingerprint)
+  are absolute URLs, because they're published beside the build rather than in
+  it.
 - Keep the website out of `.github/`: Dependabot stopped being able to open npm
   pull requests for manifests under `.github/` in June 2026 (its create-PR call
   is rejected as "invalid or unauthorized changes").
@@ -276,9 +280,13 @@ automation.
 - Release publishing is limited to trusted `v*` / `v*-rc.*` tags.
 - Signed APT repository publishing is limited to trusted stable `v*` tags.
 - The separate docs-site Pages deploy may run from `main` pushes and after
-  successful stable APT publication, but it must only republish the website on
-  top of the latest published repository snapshot; do not turn those refreshes
-  into unsigned APT repository rebuilds.
+  successful stable APT publication or stable Release Assets runs, but it must
+  only republish the website on top of the latest published repository
+  snapshot; do not turn those refreshes into unsigned APT repository rebuilds.
+- The docs-archive job in Release Assets runs `npm ci` and the site build on an
+  older commit with no token in that step's environment. Only the separate
+  `publish-docs-archive` job has `contents: write`, to attach the archive to the
+  release; keep it that way.
 - Release and publish tags must point to commits already contained in `main`;
   keep that verification in place.
 - Keep the scheduled toolchain/runtime refresh workflow branch-scoped and

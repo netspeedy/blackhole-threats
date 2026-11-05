@@ -229,6 +229,8 @@ packages for `amd64`, `arm64` and `armhf`, and GHCR images from trusted release
 tags. Stable releases add the Debian source package, `deb-src` indexes and signed
 APT metadata on GitHub Pages. The GitHub Release carries the operator assets and
 checksums, not maintainer byproducts such as dbgsym, buildinfo or changes files.
+When a release starts a new minor line, the outgoing line's docs are archived and
+stay on the site under their own path, such as `/blackhole-threats/v1.1/`.
 [Release and publishing](docs/release-and-publishing.md) has the details.
 
 ## Contributing and support

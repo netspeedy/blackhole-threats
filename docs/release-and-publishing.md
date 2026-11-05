@@ -106,6 +106,9 @@ Published outputs:
 - Debian source package artifacts
 - `sha256sums.txt`
 - curated GitHub Release notes and assets
+- for the first release of a new line (`vX.Y.0`), the outgoing line's docs as
+  `blackhole-threats-docs-<line>.tar.gz`, attached to that line's last release
+  (see [Versioned docs](#versioned-docs))
 
 ### Container Image
 
@@ -134,7 +137,7 @@ Outputs:
 - signed `Release.gpg` and `InRelease`
 - public archive key exports
 - the docs site, built with the release's tag and the archive key's fingerprint,
-  overlaid onto the repository root
+  with the archived release lines beside it, overlaid onto the repository root
 
 Stable releases publish the machine-readable APT repository and the human-facing
 docs site together.
@@ -145,6 +148,8 @@ Trigger:
 
 - pushes to `main`
 - successful `Publish Signed Debian Repository` completion
+- successful `Release Assets` completion for a stable tag, which is when an
+  outgoing line's docs archive is attached
 
 Purpose:
 
@@ -153,6 +158,7 @@ Purpose:
 - avoid rebuilding unsigned APT metadata for website-only changes
 - republish the default-branch Pages artifact after stable APT publication so
   the public docs site follows the latest signed snapshot
+- publish the archived docs of older release lines beside the latest
 
 ## Website
 
@@ -203,6 +209,57 @@ pull request builds fall back to the newest local tag and leave the fingerprint
 out. The same JSON is published as `website-metadata.json`. Links from the pages
 to the APT files are absolute URLs, because those files aren't part of the
 build and `website-check` only follows links into it.
+
+### Versioned docs
+
+The docs are versioned by release line. The latest line is built at the site
+root, and each older line is served under its own path, such as
+`https://netspeedy.github.io/blackhole-threats/v1.1/`. The version menu in the
+header lists them, and an older line's pages open with a notice that links to
+the same page in the latest docs.
+
+Only the latest line is kept in the repository. When the first release of a new
+line is published, such as `v1.2.0`, the Release Assets workflow finds the
+commit just before the new line started (`scripts/docs-archive-commit.sh`,
+which uses the same `feat:` and breaking-change rules as `next-release.sh`),
+builds the site from it with `SITE_ARCHIVE` set to the old line, and attaches
+the result to the old line's last release as
+`blackhole-threats-docs-<line>.tar.gz`. The archived pages show that release
+and the archive key's current fingerprint. The step that runs `npm ci` and the
+build on the older commit has no token in its environment; only the separate
+Publish Archived Docs job can write to the release. A failed archive doesn't
+fail the release, which the release automation waits on: the job reports it in
+its summary and leaves the line unpublished.
+
+Both Pages workflows deploy the whole site, so both run
+`scripts/download-docs-archives.sh`, which unpacks every older line's archive
+into the build before `make website-check` and lists the lines in the site
+metadata's `docs_versions`. They end up in `versions.json` at the root, which
+archived lines read when they load, so their menus include lines released after
+them. Publish Signed Debian Repository takes the script from the workflow's own
+commit, since a release published again by hand checks out an older tag, and
+carries on without the archived lines if it fails; Deploy Pages Site runs after
+it and after Release Assets, so whichever finishes last publishes the new
+archive.
+
+v1.1 is the first line that gets an archive, when v1.2.0 ships. A line whose
+last commit predates the Starlight site is skipped, because it can't build under
+a line's own path.
+
+To build an archived line by hand, for example to replace a lost archive, check
+out the commit the script prints and build it with the line set. Without
+`SITE_METADATA_FILE` the pages leave out the APT fingerprint; the docs-archive
+job in `.github/workflows/release-assets.yml` shows how it writes that file.
+
+```bash
+git checkout "$(bash scripts/docs-archive-commit.sh v1.1.7 v1.2.0)"
+SITE_ARCHIVE=v1.1 make website-build
+SITE_ARCHIVE=v1.1 make website-check
+tar -C website/dist -czf blackhole-threats-docs-v1.1.tar.gz .
+gh release upload v1.1.7 blackhole-threats-docs-v1.1.tar.gz --clobber
+```
+
+Then run Deploy Pages Site to publish it.
 
 `TestCLIReferenceCoversEveryFlag` in `cmd/blackhole-threats` fails when a flag
 is added to or removed from the CLI without updating
