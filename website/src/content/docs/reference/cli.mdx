@@ -73,5 +73,7 @@ package's upstream version without the `v`, such as `1.2.3`, and `commit: debian
 
 `-h` or `-help` prints the flags and their defaults to standard error and exits with code 0. An
 unknown flag or a value that won't parse, such as `-refresh-rate soon`, prints the same list after
-the error and exits with code 2. [Signals and exit codes](/blackhole-threats/reference/signals-and-exit-codes/)
+the error and exits with code 2. So does anything that isn't a flag, since the daemon takes no
+other arguments: `check-config` without its dash gives
+`unexpected argument "check-config"; did you mean -check-config?`. [Signals and exit codes](/blackhole-threats/reference/signals-and-exit-codes/)
 has the rest.

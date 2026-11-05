@@ -95,6 +95,22 @@ func defineFlags(fs *flag.FlagSet, f *cliFlags) {
 	fs.Var(&f.extraFeeds, "feed", "Threat intelligence feed (use multiple times)")
 }
 
+// argumentError describes the first argument left over after the flags, or returns "" when there
+// isn't one. blackhole-threats takes only flags, and the flag package stops at the first word that
+// isn't one, so without this a flag missing its dash, such as check-config, was ignored along with
+// every flag after it, and the daemon started as usual.
+func argumentError(fs *flag.FlagSet) string {
+	if fs.NArg() == 0 {
+		return ""
+	}
+
+	arg := fs.Arg(0)
+	if fs.Lookup(arg) != nil {
+		return fmt.Sprintf("unexpected argument %q; did you mean -%s?", arg, arg)
+	}
+	return fmt.Sprintf("unexpected argument %q; blackhole-threats takes only flags", arg)
+}
+
 func main() {
 	log.SetFormatter(logging.OperatorFormatter{})
 	log.SetOutput(os.Stdout)
@@ -102,6 +118,12 @@ func main() {
 	var flags cliFlags
 	defineFlags(flag.CommandLine, &flags)
 	flag.Parse()
+	// Exit the way the flag package does for a bad flag: the error, then the usage, then code 2.
+	if msg := argumentError(flag.CommandLine); msg != "" {
+		fmt.Fprintln(flag.CommandLine.Output(), msg)
+		flag.Usage()
+		os.Exit(2)
+	}
 
 	if flags.showVersion {
 		fmt.Printf("blackhole-threats %s\ncommit: %s\nbuilt: %s\n", buildinfo.DisplayVersion(), buildinfo.Commit, buildinfo.BuildDate)
