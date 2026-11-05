@@ -8,14 +8,16 @@ description: The signals blackhole-threats handles, what each one does, and the 
 | Signal | What it does |
 | --- | --- |
 | `SIGUSR1` | Refreshes now: re-reads every feed and updates the routes, keeping the BGP sessions up. The next timed refresh counts from the end of this one. |
+| `SIGHUP` | The same as `SIGUSR1`. |
 | `SIGTERM` | Stops cleanly: logs `Shutdown requested`, stops the GoBGP server, which closes the sessions, and exits 0. |
 | `SIGINT` | The same as `SIGTERM`. |
 
-No signal reloads the YAML file or the flags; that takes a restart. `SIGHUP` isn't handled, so it
-ends the process straight away, without the clean shutdown, as Go programs do by default. Don't
-send it expecting a reload.
+No signal reloads the YAML file or the flags; that takes a restart. `SIGHUP` is the usual reload
+signal for a daemon, so blackhole-threats treats it as the nearest thing it has, a refresh, rather
+than letting it end the process: a stray `SIGHUP` from a closing terminal or a tool that sends it
+on rotation leaves the routes announced. It's logged with `signal=hangup`.
 
-`SIGUSR1` arriving during a refresh is acted on once that refresh finishes, so the daemon
+A refresh signal arriving during a refresh is acted on once that refresh finishes, so the daemon
 refreshes again straight after. Several signals sent while it's busy are treated as one.
 
 How to send them:
@@ -24,7 +26,7 @@ How to send them:
 | --- | --- | --- |
 | Debian package | `sudo systemctl reload blackhole-threats` | `sudo systemctl stop blackhole-threats` |
 | Container | `docker kill --signal=SIGUSR1 blackhole-threats` | `docker stop blackhole-threats` |
-| By hand | `kill -USR1 <pid>` | `kill <pid>`, or Ctrl-C |
+| By hand | `kill -USR1 <pid>` or `kill -HUP <pid>` | `kill <pid>`, or Ctrl-C |
 
 ## Exit codes
 

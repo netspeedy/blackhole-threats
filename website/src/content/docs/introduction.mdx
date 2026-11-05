@@ -31,7 +31,7 @@ lists is announced, so only use feeds you trust and keep each one under its own 
 ## How a refresh works
 
 The daemon refreshes as soon as it starts, then every two hours by default, or straight away when
-you send it `SIGUSR1`. Each refresh does the same thing:
+you send it `SIGUSR1` or `SIGHUP`. Each refresh does the same thing:
 
 <Steps>
 

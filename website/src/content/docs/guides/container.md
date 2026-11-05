@@ -92,7 +92,7 @@ docker kill --signal=SIGUSR1 blackhole-threats
 ```
 
 The daemon logs `Refresh signal received`, refreshes and carries on running, with its BGP
-sessions up. `docker stop` sends it `SIGTERM`, and it logs `Shutdown requested` and
+sessions up. `--signal=SIGHUP` does the same. `docker stop` sends it `SIGTERM`, and it logs `Shutdown requested` and
 `Stopped blackhole-threats` on the way out and exits 0.
 
 The entrypoint script hands over to the daemon with `exec`, which is what makes the daemon the

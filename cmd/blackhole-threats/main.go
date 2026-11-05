@@ -53,6 +53,11 @@ func logStartup(cfgPath string, cfg config.File, configuredFeeds, extraFeeds int
 	}).Info("Loaded runtime configuration")
 }
 
+// refreshSignals start a refresh. SIGHUP is handled like SIGUSR1, the usual reload signal for a
+// daemon: left to Go's default it would end the process without the clean shutdown, so a stray
+// SIGHUP would drop every route, and there's no config reload for it to mean instead.
+var refreshSignals = []os.Signal{syscall.SIGUSR1, syscall.SIGHUP}
+
 // defaultCommunityField is the default community for the startup log, or "none" for a 4-byte ASN,
 // which doesn't have one.
 func defaultCommunityField(asn uint32) string {
@@ -148,7 +153,7 @@ func main() {
 	}
 
 	sigC := make(chan os.Signal, 1)
-	signal.Notify(sigC, syscall.SIGUSR1)
+	signal.Notify(sigC, refreshSignals...)
 	defer signal.Stop(sigC)
 
 	shutdownSignals := make(chan os.Signal, 1)
