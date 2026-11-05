@@ -85,7 +85,9 @@ line at the end of Spamhaus's DROP files is passed over:
 The fields have to be strings. An entry that isn't an object (`["192.0.2.1"]`, for instance), a
 field that's a number, or JSON that doesn't parse fails the whole feed. A single object that
 wraps the list, such as `{"data": [...]}`, is read as one object with none of the four fields, so
-it gives no prefixes and the feed fails with `no prefixes in feed`.
+it gives no prefixes and the feed fails with `no prefixes in feed`. So does an empty array, `[]`,
+and the error says `an empty JSON array`; set `allow_empty` on a feed whose list can really be
+empty.
 
 ## Local files and HTTP
 

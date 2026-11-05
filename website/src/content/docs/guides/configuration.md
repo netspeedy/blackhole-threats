@@ -115,8 +115,8 @@ feed doesn't have one, the daemon refuses to start with `no default community`, 
 any feed added with `-feed`, which can't set one.
 :::
 
-A feed that gives no prefixes, such as an empty response or an HTML error page served with a
-200, counts as failed, so its community keeps the routes it had. If a feed can legitimately be
+A feed that gives no prefixes, such as an empty response, an empty JSON array or an HTML error
+page served with a 200, counts as failed, so its community keeps the routes it had. If a feed can legitimately be
 empty, such as a local list you clear when there's nothing to block, say so:
 
 ```yaml

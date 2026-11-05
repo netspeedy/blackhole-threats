@@ -33,13 +33,13 @@ const sampleJSONArrayFeed = `[
 func TestReadFromJSON(t *testing.T) {
 	t.Parallel()
 
-	prefixes, count, err := readFromJSON(strings.NewReader(sampleJSONLFeed))
+	prefixes, shape, err := readFromJSON(strings.NewReader(sampleJSONLFeed))
 	if err != nil {
 		t.Fatalf("readFromJSON() error = %v", err)
 	}
 
-	if count != 2 {
-		t.Fatalf("readFromJSON() count = %d, want %d", count, 2)
+	if shape != (jsonShape{array: false, entries: 3}) {
+		t.Fatalf("readFromJSON() shape = %+v, want a stream of 3 entries", shape)
 	}
 
 	want := []string{"203.0.113.0/24", "2001:db8::/32"}
@@ -94,13 +94,13 @@ func TestReaderReadsNDJSONOverHTTP(t *testing.T) {
 func TestReadFromJSONArray(t *testing.T) {
 	t.Parallel()
 
-	prefixes, count, err := readFromJSON(strings.NewReader(sampleJSONArrayFeed))
+	prefixes, shape, err := readFromJSON(strings.NewReader(sampleJSONArrayFeed))
 	if err != nil {
 		t.Fatalf("readFromJSON() error = %v", err)
 	}
 
-	if count != 2 {
-		t.Fatalf("readFromJSON() count = %d, want %d", count, 2)
+	if shape != (jsonShape{array: true, entries: 3}) {
+		t.Fatalf("readFromJSON() shape = %+v, want an array of 3 entries", shape)
 	}
 
 	want := []string{"203.0.113.0/24", "2001:db8::/32"}
@@ -335,6 +335,35 @@ func TestReadOneFailsAJSONObjectWrapper(t *testing.T) {
 	assertNoPrefixes(t, err, "bytes of JSON with no object holding an address in cidr, prefix, ip or address")
 }
 
+// An empty array is how a JSON list says it has nothing in it, which is a different problem from
+// a wrapper object, so it gets its own wording.
+func TestReadOneFailsAnEmptyJSONArray(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, "[]")
+	}))
+	defer srv.Close()
+
+	_, _, err := Reader{Client: srv.Client()}.readOne(context.Background(), srv.URL+"/drop")
+	assertNoPrefixes(t, err, `the response was an empty JSON array (Content-Type "application/json")`)
+
+	source := writeFeed(t, "feed.json", "[ \n ]\n")
+	_, _, err = Reader{}.readOne(context.Background(), source)
+	assertNoPrefixes(t, err, "the file was an empty JSON array")
+}
+
+// An array whose entries hold no address isn't empty, so it keeps the wording for entries the
+// reader can't use.
+func TestReadOneFailsAJSONArrayWithoutAddresses(t *testing.T) {
+	t.Parallel()
+
+	source := writeFeed(t, "feed.json", `[{"generated_at":"2026-04-19T00:00:00Z"}]`)
+	_, _, err := Reader{}.readOne(context.Background(), source)
+	assertNoPrefixes(t, err, "bytes of JSON with no object holding an address in cidr, prefix, ip or address")
+}
+
 func TestReadManyFailsAFeedWithNoPrefixes(t *testing.T) {
 	t.Parallel()
 
@@ -373,9 +402,11 @@ func TestReadManyAcceptsAnEmptyFeedThatAllowsIt(t *testing.T) {
 	defer srv.Close()
 
 	file := writeFeed(t, "feed.txt", "# nothing listed today\n")
+	array := writeFeed(t, "feed.json", "[]")
 	result := Reader{Client: srv.Client()}.ReadMany(context.Background(),
 		config.Feed{URL: srv.URL + "/drop.txt", AllowEmpty: true},
 		config.Feed{URL: file, AllowEmpty: true},
+		config.Feed{URL: array, AllowEmpty: true},
 	)
 
 	if len(result.FailedSources) != 0 {

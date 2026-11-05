@@ -46,8 +46,8 @@ JSON or holds something other than objects. Each failure logs `Failed to read th
 the feed and the error.
 
 A feed that's read but gives no prefixes fails too. An empty file or response, an HTML error page
-served with a 200, a JSON object that wraps its list in another key, and a feed whose every prefix
-is shorter than the limits all give nothing to announce, and `Failed to read threat feed` says
+served with a 200, an empty JSON array, a JSON object that wraps its list in another key, and a
+feed whose every prefix is shorter than the limits all give nothing to announce, and `Failed to read threat feed` says
 which it was, such as `error="no prefixes in feed: the response was empty"`. Counting that as a
 failure keeps the community's routes announced, rather than withdrawing every one of them because
 a provider served a broken page.

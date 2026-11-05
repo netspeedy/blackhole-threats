@@ -66,6 +66,7 @@ the error says what was read instead:
 | --- | --- |
 | `the response was empty` or `the file was empty` | The provider served nothing, or the file was emptied or truncated |
 | `bytes of text with no address or prefix on any line` | An HTML page served with a 200, which the `Content-Type` in the error usually shows, or a text format with something attached to each address, such as `ip=192.0.2.1` |
+| `the response was an empty JSON array` or `the file was an empty JSON array` | The JSON list has no entries at all. A provider can do that while it has a problem, but if the list really can be empty, set `allow_empty: true` on it |
 | `bytes of JSON with no object holding an address in cidr, prefix, ip or address` | A JSON object that wraps the list in another key, or entries that use other field names |
 | `all N were shorter than the limits` | Every prefix in the feed was broader than the [`limits`](/blackhole-threats/reference/configuration/#limits) allow, such as `0.0.0.0/0` |
 
