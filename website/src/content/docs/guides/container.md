@@ -4,8 +4,8 @@ description: Run the GHCR image with a mounted config directory, pass it flags, 
 ---
 
 The image is `ghcr.io/netspeedy/blackhole-threats`, built for `linux/amd64` and `linux/arm64` on
-Debian trixie with [s6-overlay](https://github.com/just-containers/s6-overlay). It reads its
-config from `/config` and logs to standard output.
+Debian trixie. The daemon is the container's main process, so `docker kill` and `docker stop`
+signal it directly. It reads its config from `/config` and logs to standard output.
 
 ## Run it
 
@@ -85,18 +85,25 @@ docker restart blackhole-threats
 ```
 
 A restart closes the BGP sessions, so your routers drop the routes until the daemon is back and
-has refreshed. To read the feeds now without restarting, send the daemon `SIGUSR1`. In this image
-the container's process 1 is s6-overlay's `/init` rather than the daemon, so signal the daemon
-itself from inside the container:
+has refreshed. To read the feeds now without restarting, send it `SIGUSR1`:
+
+```bash
+docker kill --signal=SIGUSR1 blackhole-threats
+```
+
+The daemon logs `Refresh signal received`, refreshes and carries on running, with its BGP
+sessions up. `docker stop` sends it `SIGTERM`, and it logs `Shutdown requested` and
+`Stopped blackhole-threats` on the way out and exits 0.
+
+The entrypoint script hands over to the daemon with `exec`, which is what makes the daemon the
+container's process 1 and lets these signals reach it. Older images ran the daemon under
+s6-overlay's `/init` instead, and on those `docker kill --signal=SIGUSR1` reaches `/init` and
+stops the whole container. To refresh one of them, signal the daemon from inside it:
 
 ```bash
 docker exec blackhole-threats sh -c \
-  'for p in /proc/[0-9]*; do [ "$(readlink "$p/exe")" = /usr/sbin/blackhole-threats ] && kill -USR1 "${p##*/}"; done'
+  'for p in /proc/[0-9]*; do if [ "$(readlink "$p/exe")" = /usr/sbin/blackhole-threats ]; then kill -USR1 "${p##*/}"; fi; done'
 ```
-
-The daemon logs `Refresh signal received` and refreshes. `docker stop` shuts the container down
-through `/init`, which stops the daemon with `SIGTERM`; it logs `Shutdown requested` and
-`Stopped blackhole-threats` on the way out.
 
 ```bash
 docker logs -f blackhole-threats

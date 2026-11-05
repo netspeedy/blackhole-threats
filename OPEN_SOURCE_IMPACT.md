@@ -41,7 +41,7 @@ useful as open source also requires:
 - ongoing documentation for operations, configuration, troubleshooting, release
   flow, and deployment examples
 - dependency and supply-chain maintenance across Go modules, GitHub Actions,
-  container bases, S6 overlay pins, and website tooling
+  container bases, Go build image pins, and website tooling
 - security response capacity for private vulnerability reports and dependency
   alerts
 

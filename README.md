@@ -90,9 +90,11 @@ docker run -d \
 ```
 
 `latest` follows stable releases, and release candidates publish to `rc` as well
-as their own `v*-rc.*` tag. The image runs on Debian trixie under S6 Overlay,
-logs structured lines to stdout, and reads its configuration from `/config`. On
-first start it puts the sample config there for you to edit.
+as their own `v*-rc.*` tag. The image runs on Debian trixie with the daemon as
+its main process, logs structured lines to stdout, and reads its configuration
+from `/config`. On first start it puts the sample config there for you to edit.
+Because the daemon is process 1, `docker kill --signal=SIGUSR1 blackhole-threats`
+refreshes the feeds and `docker stop` shuts it down cleanly.
 
 ### From source
 

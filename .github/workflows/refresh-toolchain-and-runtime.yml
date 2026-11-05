@@ -39,23 +39,6 @@ jobs:
           latest_minor="$(go env GOVERSION | sed -E 's/^go([0-9]+\.[0-9]+).*/\1/')"
           sed -i "s/^ARG GO_VERSION=.*/ARG GO_VERSION=${latest_minor}/" Dockerfile
 
-      - name: Refresh Docker s6-overlay pin
-        run: |
-          latest="$(curl -fsSL https://api.github.com/repos/just-containers/s6-overlay/releases/latest | jq -r .tag_name)"
-          latest="${latest#v}"
-          base_url="https://github.com/just-containers/s6-overlay/releases/download/v${latest}"
-          noarch_sha256="$(curl -fsSL "${base_url}/s6-overlay-noarch.tar.xz.sha256" | awk '{print $1}')"
-          x86_64_sha256="$(curl -fsSL "${base_url}/s6-overlay-x86_64.tar.xz.sha256" | awk '{print $1}')"
-          aarch64_sha256="$(curl -fsSL "${base_url}/s6-overlay-aarch64.tar.xz.sha256" | awk '{print $1}')"
-          symlinks_noarch_sha256="$(curl -fsSL "${base_url}/s6-overlay-symlinks-noarch.tar.xz.sha256" | awk '{print $1}')"
-          symlinks_arch_sha256="$(curl -fsSL "${base_url}/s6-overlay-symlinks-arch.tar.xz.sha256" | awk '{print $1}')"
-          sed -i "s/^ARG S6_OVERLAY_VERSION=.*/ARG S6_OVERLAY_VERSION=${latest}/" Dockerfile
-          sed -i "s/^ARG S6_OVERLAY_NOARCH_SHA256=.*/ARG S6_OVERLAY_NOARCH_SHA256=${noarch_sha256}/" Dockerfile
-          sed -i "s/^ARG S6_OVERLAY_X86_64_SHA256=.*/ARG S6_OVERLAY_X86_64_SHA256=${x86_64_sha256}/" Dockerfile
-          sed -i "s/^ARG S6_OVERLAY_AARCH64_SHA256=.*/ARG S6_OVERLAY_AARCH64_SHA256=${aarch64_sha256}/" Dockerfile
-          sed -i "s/^ARG S6_OVERLAY_SYMLINKS_NOARCH_SHA256=.*/ARG S6_OVERLAY_SYMLINKS_NOARCH_SHA256=${symlinks_noarch_sha256}/" Dockerfile
-          sed -i "s/^ARG S6_OVERLAY_SYMLINKS_ARCH_SHA256=.*/ARG S6_OVERLAY_SYMLINKS_ARCH_SHA256=${symlinks_arch_sha256}/" Dockerfile
-
       # The refresh only changes Dockerfile pins, so it always changes the published image. It's
       # titled container:, like Dependabot's image updates, so it cuts a release.
       - name: Create pull request
@@ -68,9 +51,7 @@ jobs:
           commit-message: "container: refresh build and runtime pins"
           title: "container: refresh build and runtime pins"
           body: |
-            Refreshes the pinned Docker Go build image version and updates the
-            pinned Docker `s6-overlay` version and checksum pins in
-            `Dockerfile`.
+            Refreshes the pinned Docker Go build image version in `Dockerfile`.
           delete-branch: true
           labels: |
             dependencies
