@@ -21,10 +21,15 @@ concurrency:
   group: dependabot-merge-${{ github.event.workflow_run.head_branch || github.ref_name || github.run_id }}
   cancel-in-progress: false
 
+# checks and statuses are read-only. Nothing here queries them directly, but gh's
+# pull request and run lookups can touch check data, and a missing read only shows
+# up when a real merge fails, so they stay.
 permissions:
   actions: read
+  checks: read
   contents: write
   pull-requests: write
+  statuses: read
 
 jobs:
   merge:
