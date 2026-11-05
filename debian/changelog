@@ -1,3 +1,21 @@
+blackhole-threats (1.1.7-1) stable; urgency=medium
+
+  * Promote to stable automatically only for automated updates (#114).
+  * Fail promotion early when the release token is missing (#115).
+  * Title the build and runtime pin refresh container: (#116).
+  * Recognise automated updates by author email, not name (#118).
+  * Register the CLI flags in one function (#117).
+  * Rebuild the website as a Starlight docs site (#119).
+  * Stop old site files lingering on Pages (#120).
+  * Refuse to announce prefixes shorter than /8 or /16 (#121).
+  * Count a feed that gives no prefixes as failed (#122).
+  * Run the daemon as the container's PID 1 (#123).
+  * Require a community on every feed with a 4-byte ASN (#124).
+  * Report tag_version for Debian builds (#125).
+  * Treat SIGHUP as a refresh (#126).
+
+ -- Simon Oakes <813389+soakes@users.noreply.github.com>  Thu, 05 Nov 2026 07:59:51 +0000
+
 blackhole-threats (1.1.6-1) stable; urgency=medium
 
   * Add README hero image.
