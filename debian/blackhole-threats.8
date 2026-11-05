@@ -76,7 +76,9 @@ flag remains as a shorthand for
 .TP
 .BI \-feed " SOURCE"
 Add an extra threat feed without editing the YAML configuration. This option
-may be supplied more than once.
+may be supplied more than once. The feed uses the default community,
+.IR ASN :666,
+so it cannot be used when the local ASN is above 65535, which has no default.
 .TP
 .B \-once
 Run a single refresh cycle and exit.

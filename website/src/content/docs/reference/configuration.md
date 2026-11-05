@@ -73,8 +73,8 @@ A list, one entry per feed.
 | `allow_empty` | boolean | `false` | Whether the feed may give no prefixes. Without it, a feed that gives none counts as failed and its community keeps its previous routes; with it, the routes are withdrawn. |
 
 `community: 0:0` means the same as leaving it out. Feeds added with `-feed` have no community and
-always use the default, and can't set `allow_empty`. For a local ASN above 65535 the default doesn't fit (only the ASN's low
-16 bits are kept, so AS 4200000000 gives `59904:666`), so set `community` on every feed.
+always use the default, and can't set `allow_empty`. A local ASN above 65535 doesn't fit in a standard community, so there's
+no default: every feed needs its own `community`, and `-feed` can't be used.
 
 ## limits
 
@@ -111,6 +111,8 @@ communities](/blackhole-threats/how-it-works/feeds/#short-prefixes) has the deta
 - a feed with an empty `url`, or a scheme other than `http` or `https`, such as `ftp://` or
   `file://`
 - a `community` that isn't two numbers from 0 to 65535 separated by one colon
+- a feed with no `community` (or `0:0`) when the local ASN is above 65535, including any feed from
+  `-feed`
 - a `limits.min_ipv4_prefix_length` outside 1 to 32, or a `limits.min_ipv6_prefix_length`
   outside 1 to 128
 

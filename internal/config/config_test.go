@@ -2,8 +2,10 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/osrg/gobgp/v3/pkg/config/oc"
@@ -77,7 +79,7 @@ func TestFileValidateRejectsInvalidRouterID(t *testing.T) {
 func TestValidateFeedsRejectsMissingFeedURL(t *testing.T) {
 	t.Parallel()
 
-	err := ValidateFeeds([]Feed{{URL: ""}})
+	err := ValidateFeeds([]Feed{{URL: ""}}, 64512)
 	if !errors.Is(err, ErrMissingFeedURL) {
 		t.Fatalf("ValidateFeeds() error = %v, want ErrMissingFeedURL", err)
 	}
@@ -86,7 +88,7 @@ func TestValidateFeedsRejectsMissingFeedURL(t *testing.T) {
 func TestValidateFeedsRejectsUnsupportedFeedScheme(t *testing.T) {
 	t.Parallel()
 
-	err := ValidateFeeds([]Feed{{URL: "ftp://example.com/feed.txt"}})
+	err := ValidateFeeds([]Feed{{URL: "ftp://example.com/feed.txt"}}, 64512)
 	if !errors.Is(err, ErrUnsupportedFeedScheme) {
 		t.Fatalf("ValidateFeeds() error = %v, want ErrUnsupportedFeedScheme", err)
 	}
@@ -419,5 +421,78 @@ feeds:
 	}
 	if !cfg.Feeds[0].AllowEmpty || cfg.Feeds[1].AllowEmpty {
 		t.Fatalf("allow_empty = %v and %v, want true and false", cfg.Feeds[0].AllowEmpty, cfg.Feeds[1].AllowEmpty)
+	}
+}
+
+func TestDefaultCommunity(t *testing.T) {
+	t.Parallel()
+
+	for _, asn := range []uint32{1, 64512, 65535} {
+		community, ok := DefaultCommunity(asn)
+		if want := fmt.Sprintf("%d:666", asn); !ok || community.String() != want {
+			t.Errorf("DefaultCommunity(%d) = %s, %v, want %s, true", asn, community, ok, want)
+		}
+	}
+
+	// A standard community has 16 bits for the ASN. 4200000000 used to come out as 59904:666.
+	for _, asn := range []uint32{65536, 4200000000} {
+		if community, ok := DefaultCommunity(asn); ok {
+			t.Errorf("DefaultCommunity(%d) = %s, true, want no default for a 4-byte ASN", asn, community)
+		}
+	}
+}
+
+func TestValidateRequiresACommunityWithA4ByteASN(t *testing.T) {
+	t.Parallel()
+
+	var explicit, zero Community
+	if err := explicit.UnmarshalText([]byte("65535:666")); err != nil {
+		t.Fatalf("UnmarshalText() error = %v", err)
+	}
+	if err := zero.UnmarshalText([]byte("0:0")); err != nil {
+		t.Fatalf("UnmarshalText() error = %v", err)
+	}
+
+	tests := []struct {
+		name string
+		feed Feed
+		ok   bool
+	}{
+		{"no community", Feed{URL: "https://example.com/feed.txt"}, false},
+		{"0:0, which means the default", Feed{URL: "https://example.com/feed.txt", Community: zero}, false},
+		{"its own community", Feed{URL: "https://example.com/feed.txt", Community: explicit}, true},
+	}
+
+	for _, tt := range tests {
+		cfg := File{
+			GoBGP: oc.BgpConfigSet{
+				Global: oc.Global{Config: oc.GlobalConfig{As: 4200000000, RouterId: "192.0.2.1"}},
+			},
+			Feeds: []Feed{tt.feed},
+		}
+		err := cfg.Validate()
+		if tt.ok && err != nil {
+			t.Errorf("%s: Validate() error = %v, want nil", tt.name, err)
+		}
+		if !tt.ok && !errors.Is(err, ErrNoDefaultCommunity) {
+			t.Errorf("%s: Validate() error = %v, want ErrNoDefaultCommunity", tt.name, err)
+		}
+	}
+}
+
+// Feeds from -feed never have a community, so with a 4-byte local ASN they're refused too.
+func TestValidateFeedsRefusesFeedFlagsWithA4ByteASN(t *testing.T) {
+	t.Parallel()
+
+	if err := ValidateFeeds([]Feed{{URL: "https://example.com/feed.txt"}}, 65535); err != nil {
+		t.Fatalf("ValidateFeeds() with a 2-byte ASN error = %v, want nil", err)
+	}
+
+	err := ValidateFeeds([]Feed{{URL: "https://example.com/feed.txt"}}, 65536)
+	if !errors.Is(err, ErrNoDefaultCommunity) {
+		t.Fatalf("ValidateFeeds() error = %v, want ErrNoDefaultCommunity", err)
+	}
+	if !strings.Contains(err.Error(), "https://example.com/feed.txt") {
+		t.Fatalf("ValidateFeeds() error = %q, want it to name the feed", err)
 	}
 }

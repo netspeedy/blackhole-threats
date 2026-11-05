@@ -28,6 +28,7 @@ The daemon exits with code 1 and one of these:
 | `Invalid configuration` with `invalid router ID` | `routerid` is missing or isn't an IPv4 address |
 | `Invalid configuration` with `invalid minimum prefix length` | `limits.min_ipv4_prefix_length` isn't 1 to 32, or `limits.min_ipv6_prefix_length` isn't 1 to 128 |
 | `Invalid configuration` or `Invalid feed configuration` with `missing feed URL` or `unsupported feed scheme` | A feed with an empty `url`, or a scheme other than `http` or `https` (in the file or a `-feed` flag) |
+| `Invalid configuration` or `Invalid feed configuration` with `no default community` | The local ASN is above 65535, so there's no `<local ASN>:666`, and a feed has no `community` of its own. A `-feed` flag can't set one, so move that feed into the file. |
 | `Refresh timer must be greater than zero` | `-refresh-rate` is 0 or negative |
 | `Invalid log format` or `Invalid log level` | A value `-log-format` or `-log-level` doesn't take |
 

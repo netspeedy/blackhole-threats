@@ -14,7 +14,7 @@ import FlagTable from "../../../components/FlagTable.astro";
 export const config = [
   { flag: "-conf", arg: "PATH", default: "blackhole-threats.yaml", description: "The YAML config file. A relative path is read from the working directory." },
   { flag: "-check-config", description: "Load and validate the config, the feeds and the flags, print `configuration OK: N feed(s)` and exit without starting BGP." },
-  { flag: "-feed", arg: "SOURCE", repeatable: true, description: "Add a feed, as a file path or an `http://` or `https://` URL, to the ones in the config. It always uses the default community, `<local ASN>:666`." },
+  { flag: "-feed", arg: "SOURCE", repeatable: true, description: "Add a feed, as a file path or an `http://` or `https://` URL, to the ones in the config. It always uses the default community, `<local ASN>:666`, so it can't be used with a local ASN above 65535, which has no default." },
 ];
 
 export const running = [

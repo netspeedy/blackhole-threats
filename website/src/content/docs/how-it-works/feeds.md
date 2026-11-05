@@ -29,7 +29,9 @@ and JSON.
 
 Every feed carries a community, written `<as>:<value>`. A feed without one gets
 `<local ASN>:666`, so with local AS 64520 that's `64520:666`. Feeds added with the `-feed` flag
-can't set a community and always get the default.
+can't set a community and always get the default. A 4-byte local ASN, above 65535, doesn't fit in
+the first half of a community, so it has no default: every feed has to set its own, and the
+daemon won't start if one doesn't.
 
 On each refresh the feeds are grouped by community and the groups are handled one at a time, in
 order of their community value. Within a group, every feed is read at the same time. Each group

@@ -14,7 +14,7 @@ community. Your routers match that community and route the traffic to a blackhol
 It's one Go binary with [GoBGP](https://github.com/osrg/gobgp) built in, so there's no separate
 BGP daemon to run beside it. One YAML file holds both the GoBGP settings and the list of feeds,
 and every feed is tagged with the community its routes carry. A feed with no community gets
-`<local ASN>:666`.
+`<local ASN>:666`, as long as the local ASN fits in 16 bits.
 
 ## What it doesn't do
 
