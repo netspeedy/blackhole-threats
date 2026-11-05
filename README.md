@@ -249,9 +249,10 @@ make test
 make build
 ```
 
-`make docker-build` builds the container image, `make package` builds the Debian
-package, and `make website-build` builds the GitHub Pages site after
-`npm ci --prefix website`.
+`make docker-build` builds the container image and `make package` builds the
+Debian package. The GitHub Pages site is built from `website/`, and its
+[README](website/README.md) covers the `make website-*` targets and how the site
+is published.
 
 The banner at the top of this page and the social cards are generated. Edit the
 copy, layout or timing in `scripts/readme/build_readme_hero.py` and run `make
