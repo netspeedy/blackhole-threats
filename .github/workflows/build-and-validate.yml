@@ -41,7 +41,6 @@ jobs:
         run: |
           bash -n scripts/build-apt-repository.sh
           bash -n scripts/generate-release-notes.sh
-          bash -n scripts/generate-website-highlights.sh
           bash -n scripts/next-release.sh
           bash -n scripts/prepare-debian-changelog.sh
           bash -n scripts/update-debian-changelog.sh
@@ -60,14 +59,8 @@ jobs:
       - name: Validate GitHub Pages website
         run: |
           npm ci --prefix "${WEBSITE_DIR}"
-          npm --prefix "${WEBSITE_DIR}" run check
-          make website-build \
-            WEBSITE_DIR="${WEBSITE_DIR}" \
-            SITE_URL=https://netspeedy.github.io/blackhole-threats/ \
-            SITE_RELEASE_VERSION="0.0.0-ci.${GITHUB_RUN_NUMBER}" \
-            SITE_COMMIT="${GITHUB_SHA}" \
-            SITE_BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            SITE_APT_FINGERPRINT="CI preview signing fingerprint"
+          make website-build WEBSITE_DIR="${WEBSITE_DIR}"
+          make website-check WEBSITE_DIR="${WEBSITE_DIR}"
 
       - name: Run vet
         run: make vet

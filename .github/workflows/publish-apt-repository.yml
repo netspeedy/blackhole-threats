@@ -214,18 +214,6 @@ jobs:
             apt-get "${apt_args[@]}" source blackhole-threats
           )
 
-      - name: Compute website release highlights
-        id: website_highlights
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          highlights_json="$(
-            bash scripts/generate-website-highlights.sh "${RELEASE_REF}" \
-              | jq -Rsc 'split("\n") | map(select(length > 0))'
-          )"
-
-          echo "release_highlights_json=${highlights_json}" >> "$GITHUB_OUTPUT"
-
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
@@ -233,39 +221,43 @@ jobs:
           cache: npm
           cache-dependency-path: ${{ env.WEBSITE_DIR }}/package-lock.json
 
-      - name: Build GitHub Pages landing site
+      - name: Build GitHub Pages site
         env:
-          PUBLIC_RELEASE_HIGHLIGHTS_JSON: ${{ steps.website_highlights.outputs.release_highlights_json }}
+          PRETTY_FINGERPRINT: ${{ steps.signing.outputs.pretty_fingerprint }}
+          SITE_URL: ${{ steps.meta.outputs.site_url }}
+          RELEASE_COMMIT: ${{ steps.meta.outputs.commit }}
         run: |
-          npm ci --prefix "${WEBSITE_DIR}"
-          make website-build \
-            WEBSITE_DIR="${WEBSITE_DIR}" \
-            SITE_URL=${{ steps.meta.outputs.site_url }} \
-            SITE_RELEASE_VERSION=${{ steps.meta.outputs.version }} \
-            SITE_COMMIT=${{ steps.meta.outputs.commit }} \
-            SITE_BUILD_DATE=${{ steps.meta.outputs.build_date }} \
-            SITE_APT_FINGERPRINT="${{ steps.signing.outputs.pretty_fingerprint }}"
-          cp -a "${WEBSITE_DIR}/dist/." site/
-
-      - name: Generate website metadata
-        env:
-          RELEASE_HIGHLIGHTS_JSON: ${{ steps.website_highlights.outputs.release_highlights_json }}
-        run: |
+          # The site reads the release details at build time, so write them first.
+          metadata="${RUNNER_TEMP}/website-metadata.json"
           jq -n \
-            --arg site_url "${{ steps.meta.outputs.site_url }}" \
-            --arg release_version "${{ steps.meta.outputs.version }}" \
-            --arg commit "${{ steps.meta.outputs.commit }}" \
-            --arg build_date "${{ steps.meta.outputs.build_date }}" \
-            --arg apt_fingerprint "${{ steps.signing.outputs.pretty_fingerprint }}" \
-            --argjson release_highlights "${RELEASE_HIGHLIGHTS_JSON}" \
+            --arg site_url "${SITE_URL}" \
+            --arg tag "${RELEASE_REF}" \
+            --arg release_url "https://github.com/${GITHUB_REPOSITORY}/releases/tag/${RELEASE_REF}" \
+            --arg commit "${RELEASE_COMMIT}" \
+            --arg fingerprint "${PRETTY_FINGERPRINT}" \
             '{
               site_url: $site_url,
-              release_version: $release_version,
-              commit: $commit,
-              build_date: $build_date,
-              apt_fingerprint: $apt_fingerprint,
-              release_highlights: $release_highlights
-            }' > site/website-metadata.json
+              latest_release: {
+                tag_name: $tag,
+                html_url: $release_url
+              },
+              release_commit: $commit,
+              apt_repository: {
+                available: true,
+                url: $site_url,
+                suite: "stable",
+                component: "main",
+                key_url: ($site_url + "blackhole-threats-archive-keyring.gpg"),
+                fingerprint: $fingerprint
+              }
+            }' > "${metadata}"
+
+          npm ci --prefix "${WEBSITE_DIR}"
+          SITE_METADATA_FILE="${metadata}" make website-build WEBSITE_DIR="${WEBSITE_DIR}"
+          make website-check WEBSITE_DIR="${WEBSITE_DIR}"
+          cp -a "${WEBSITE_DIR}/dist/." site/
+          cp "${metadata}" site/website-metadata.json
+          touch site/.nojekyll
 
       - name: Publish durable repository snapshot branch
         env:

@@ -1,0 +1,72 @@
+---
+// The end of a page: links to edit it and to report a problem with it, then previous and next,
+// then the site footer. Splash pages such as the home page get only the site footer, and archived
+// lines have no edit link, since their pages can't be edited any more. None of it is indexed for search, or every page would match its links.
+import Pagination from "@astrojs/starlight/components/Pagination.astro";
+import { icons } from "../lib/icons";
+import { docs, links } from "../lib/site";
+import SiteFooter from "./SiteFooter.astro";
+
+const { editUrl, entry, pagination } = Astro.locals.starlightRoute;
+// The 404 page is a doc page, but there's nothing on it to edit or report.
+const docPage = entry.data.template !== "splash" && entry.id !== "404";
+const report = new URL(`${links.repo}/issues/new`);
+report.searchParams.set("title", `Docs${docs.archived ? ` (${docs.current})` : ""}: ${entry.data.title}`);
+report.searchParams.set("body", `On ${new URL(Astro.url.pathname, Astro.site)}:\n\n`);
+---
+
+<footer class="ns-end" data-pagefind-ignore>
+  {
+    docPage && (
+      <div class="ns-page-end print:hidden">
+        {editUrl && (
+          <a href={editUrl}>
+            <svg viewBox="0 0 24 24" aria-hidden="true" set:html={icons.pencil} />
+            Edit this page on GitHub
+          </a>
+        )}
+        <a href={report.href}>
+          <svg viewBox="0 0 24 24" aria-hidden="true" set:html={icons.flag} />
+          Report a problem with this page
+        </a>
+      </div>
+    )
+  }
+  {(pagination.prev || pagination.next) && <Pagination />}
+  <SiteFooter />
+</footer>
+
+<style>
+  .ns-end {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  .ns-page-end {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.5rem;
+    margin-top: 2.75rem;
+    font-size: var(--sl-text-sm);
+  }
+  .ns-page-end a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4375rem;
+    padding-block: 0.25rem;
+    color: var(--sl-color-gray-3);
+    text-decoration: none;
+  }
+  .ns-page-end a:hover {
+    color: var(--sl-color-white);
+  }
+  svg {
+    width: 0.9375rem;
+    height: 0.9375rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.9;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+</style>

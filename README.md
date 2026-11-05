@@ -28,7 +28,7 @@ feed's community stay as they were rather than being flushed. Everything ships
 from this repository: release binaries, a GHCR image, Debian packages and a
 signed APT repository.
 
-**Quick links:** [Install](#install) · [Try it](#try-it) · [Operations guide](docs/operations.md) · [Configuration reference](docs/config-reference.md) · [Releases](https://github.com/netspeedy/blackhole-threats/releases) · [APT repository](https://netspeedy.github.io/blackhole-threats/) · [Discussions](https://github.com/netspeedy/blackhole-threats/discussions)
+**Quick links:** [Install](#install) · [Try it](#try-it) · [Docs](https://netspeedy.github.io/blackhole-threats/) · [How it works](https://netspeedy.github.io/blackhole-threats/how-it-works/) · [Config keys](https://netspeedy.github.io/blackhole-threats/reference/configuration/) · [Releases](https://github.com/netspeedy/blackhole-threats/releases) · [Discussions](https://github.com/netspeedy/blackhole-threats/discussions)
 
 ## Install
 
@@ -36,8 +36,7 @@ signed APT repository.
 
 On Debian-family hosts the signed APT repository is the recommended production
 path. The package installs the binary, a systemd unit, the default environment
-file, a man page, the sample config and the documentation in conventional
-places: `/usr/sbin/blackhole-threats`, `/etc/blackhole-threats.yaml`,
+file, a man page and the sample config in conventional places: `/usr/sbin/blackhole-threats`, `/etc/blackhole-threats.yaml`,
 `/etc/default/blackhole-threats`, `/usr/share/man/man8/blackhole-threats.8.gz`
 and `/usr/share/doc/blackhole-threats/examples/blackhole-threats.yaml`.
 
@@ -63,16 +62,17 @@ sudo apt install blackhole-threats
 ```
 
 The repository carries binary and source indexes, signed metadata, the archive
-key and a published fingerprint for checking the key out of band. Once the
-package is installed:
+key and a published fingerprint for checking the key out of band. The package
+enables the service and starts it with the example config, so once your own
+config is in `/etc/blackhole-threats.yaml`, check it and restart:
 
 ```bash
 sudo /usr/sbin/blackhole-threats -conf /etc/blackhole-threats.yaml -check-config
-sudo systemctl enable --now blackhole-threats
+sudo systemctl restart blackhole-threats
 sudo journalctl -u blackhole-threats -f
 ```
 
-[Deployment examples](docs/deployment-examples.md) walks through the full Debian
+[Debian package](https://netspeedy.github.io/blackhole-threats/guides/debian/) in the docs walks through the full Debian
 path.
 
 ### Container image
@@ -107,13 +107,13 @@ make build
 
 ## Try it
 
-Check the sample configuration without starting BGP:
+Check the packaged configuration without starting BGP:
 
 ```bash
-./dist/blackhole-threats -conf examples/blackhole-threats.yaml -check-config
+blackhole-threats -conf /etc/blackhole-threats.yaml -check-config
 ```
 
-It loads the GoBGP settings and every feed, validates them, and exits:
+It checks the local ASN, the router ID, the BGP ports and every feed, then exits without starting BGP:
 
 ```text
 configuration OK: 11 feed(s)
@@ -125,8 +125,9 @@ the local ASN, router ID, neighbors, feed URLs and communities with your own. Th
 run it once with `-once` against a lab peer or an unprivileged local port, and
 check the startup log shows the `local_as`, `router_id`, `peer_count` and
 `default_community` you expect. Only then enable the long-running service. The
-[operations guide](docs/operations.md) covers validation modes, service startup,
-manual refreshes, configuration changes and day-2 work.
+[quickstart](https://netspeedy.github.io/blackhole-threats/quickstart/) runs through this with a local feed, and
+[Operations](https://netspeedy.github.io/blackhole-threats/guides/operations/) covers rollouts, manual refreshes,
+configuration changes and day-2 work.
 
 ## Configuration
 
@@ -156,15 +157,15 @@ range 0-65535. Leave it out and the feed uses the default `<local ASN>:666`. A
 local file path works as a feed URL. BGP ports default to 179 when omitted. The
 router ID has to be an IPv4 address even when some neighbors are IPv6. The
 example addresses come from documentation ranges, so replace them before you
-deploy. The [configuration reference](docs/config-reference.md) has the full
+deploy. [Config keys](https://netspeedy.github.io/blackhole-threats/reference/configuration/) in the docs has the full
 schema, and the example file shows a fuller operator setup.
 
 ## Runtime controls
 
 ```bash
-./dist/blackhole-threats -conf /path/to/blackhole-threats.yaml -check-config
-./dist/blackhole-threats -conf /path/to/blackhole-threats.yaml -once
-./dist/blackhole-threats -conf /path/to/blackhole-threats.yaml -log-format json -log-level info
+blackhole-threats -conf /path/to/blackhole-threats.yaml -check-config
+blackhole-threats -conf /path/to/blackhole-threats.yaml -once
+blackhole-threats -conf /path/to/blackhole-threats.yaml -log-format json -log-level info
 kill -USR1 <pid>
 ```
 
@@ -180,26 +181,23 @@ logfmt-style by default, which suits Docker, journald and syslog;
 
 Feeds can be local files with no URI scheme or `http://` and `https://`
 endpoints. Text feeds can be plain prefix lists with the usual comment styles;
-embedded IPv4 and IPv6 prefixes are extracted, and a bare IP address becomes a
-host prefix. JSON arrays, JSONL and NDJSON are read for the common fields
+the first IPv4 or IPv6 prefix on each line is used, and a bare IP address
+becomes a host prefix. JSON arrays, JSONL and NDJSON are read for the common fields
 `cidr`, `prefix`, `ip` and `address`. Feeds that share a community are grouped,
 summarised and published together, and a failure in any of them carries that
-community's last good routes forward. [Feed behavior](docs/feed-behavior.md) has
-the parsing, grouping, summarisation and failure details.
+community's last good routes forward. [Feeds and communities](https://netspeedy.github.io/blackhole-threats/how-it-works/feeds/)
+and [Feed formats](https://netspeedy.github.io/blackhole-threats/reference/feed-formats/) have the parsing, grouping,
+summarisation and failure details.
 
 ## Documentation
 
-Longer guides live under [`docs/`](docs/README.md):
-
-| Document | Use it for |
-| --- | --- |
-| [Operations guide](docs/operations.md) | First deployment, runtime controls, day-2 changes |
-| [Configuration reference](docs/config-reference.md) | YAML shape, validation rules, CLI interaction |
-| [Deployment examples](docs/deployment-examples.md) | Source, Debian, container, local feed and router policy examples |
-| [Feed behavior](docs/feed-behavior.md) | Feed parsing, grouping, summarisation, failure handling |
-| [Architecture](docs/architecture.md) | Package boundaries, runtime lifecycle, design goals |
-| [Release and publishing](docs/release-and-publishing.md) | Release candidates, stable promotion, APT, GHCR, assets |
-| [Troubleshooting](docs/troubleshooting.md) | Config, feed, BGP, container, service and publish issues |
+The full documentation is the [blackhole-threats docs site](https://netspeedy.github.io/blackhole-threats/): installation,
+how a refresh turns feeds into routes, guides for the Debian package, the
+container, router policy and operations, and a reference for every flag, config
+key, feed format and log message. The files in [`docs/`](docs/README.md) point
+there, apart from [Release and publishing](docs/release-and-publishing.md), which
+covers release candidates, stable promotion, the publish workflows and the site
+itself for maintainers.
 
 ## Releases and CI/CD
 
@@ -254,14 +252,16 @@ make build
 ```
 
 `make docker-build` builds the container image and `make package` builds the
-Debian package. The GitHub Pages site is built from `website/`, and its
-[README](website/README.md) covers the `make website-*` targets and how the site
-is published.
+Debian package. The [docs site](https://netspeedy.github.io/blackhole-threats/) is built with Astro and Starlight from
+`website/`, and its [README](website/README.md) covers the `make website-*`
+targets and how the site is published. If you add, rename or remove a flag,
+update the CLI reference page in the same change: `TestCLIReferenceCoversEveryFlag`
+in `cmd/blackhole-threats` fails until the page matches.
 
 The banner at the top of this page and the social cards are generated. Edit the
 copy, layout or timing in `scripts/readme/build_readme_hero.py` and run `make
 readme-hero`. That rebuilds `assets/blackhole-threats-readme-hero.svg`, the
-website's `website/public/og-image.png` and
+website's share card, mark and icons, and
 `assets/blackhole-threats-social-card.png`, which is the image for GitHub's
 social preview and is uploaded by hand in the repository settings. It runs the
 script with `uv`, which installs the pinned fontTools it subsets the fonts with, and

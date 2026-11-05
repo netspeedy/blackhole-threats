@@ -26,8 +26,10 @@ the change.
 
 Useful background:
 
-- [README.md](README.md) for operator-facing behavior
-- [docs/architecture.md](docs/architecture.md) for package boundaries
+- [README.md](README.md) and the [docs site](https://netspeedy.github.io/blackhole-threats/)
+  for operator-facing behavior
+- [AGENTS.md](AGENTS.md#project-structure--module-organization) for package
+  boundaries
 - [docs/release-and-publishing.md](docs/release-and-publishing.md) for release
   automation and publishing rules
 - [examples/blackhole-threats.yaml](examples/blackhole-threats.yaml) for the
@@ -67,7 +69,7 @@ Run the checks that match the files you changed:
 | Container behavior | `make docker-build` |
 | Debian packaging, install paths, service files | `make package` |
 | APT repository builder | `bash -n scripts/build-apt-repository.sh` |
-| GitHub Pages site | `npm ci --prefix website`, `npm --prefix website run check`, `make website-build` |
+| Docs site | `make website-install`, `make website-build`, `make website-check`, `make website-test` |
 | Documentation only | Review links and examples for accuracy |
 
 If you cannot run a relevant check locally, say so in the pull request and

@@ -1,0 +1,489 @@
+---
+// The top of the home page: the title and lead on the left, and on the right a dark panel with
+// one refresh run against the quickstart's lab config, the example config, and the config check.
+// The log lines are the real output of the quickstart's `-once` run, and the config is an excerpt
+// of examples/blackhole-threats.yaml; keep both in step with the quickstart.
+import { product, release } from "../lib/site";
+
+const { title } = Astro.locals.starlightRoute.entry.data;
+// "Threat feeds in. Blackhole routes out." goes on two lines.
+const lines = title.split(/(?<=\.)\s+/);
+
+const esc = (text: string) =>
+  text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const span = (cls: string, text: string) => `<span class="${cls}">${esc(text)}</span>`;
+
+/** One shell line: the command, flags, arguments and a trailing line continuation. */
+function shell(line: string, first: boolean): string {
+  let command = first;
+  const words = line.split(/( +)/).map((word) => {
+    if (!word.trim()) return word;
+    if (word === "\\") return span("m", word);
+    if (command) {
+      command = false;
+      return span("c", word);
+    }
+    return span(word.startsWith("-") ? "f" : "v", word);
+  });
+  return (first ? span("p", "$ ") : "") + words.join("");
+}
+const commandLines = (lines: string[]) => lines.map((line, i) => shell(line, i === 0));
+
+/** A logfmt line: keys muted, the level coloured, the message bright and other values tinted. */
+function logfmt(line: string): string {
+  const pairs = line.match(/\w+=(?:"(?:[^"\\]|\\.)*"|\S*)/g) ?? [];
+  const body = pairs.map((pair) => {
+    const at = pair.indexOf("=");
+    const key = pair.slice(0, at);
+    const value = pair.slice(at + 1);
+    const kind =
+      key === "level" ? (value === "info" ? "y" : value === "warning" ? "d" : "e") : key === "msg" ? "h" : key === "time" ? "m" : "k";
+    return `<span class="pr">${span("m", `${key}=`)}${span(kind, value)}</span>`;
+  });
+  // Long lines wrap between fields, indented under the line's first one (see .ln below).
+  return `<span class="ln">${body.join(" ")}</span>`;
+}
+
+/** A line of YAML: comments, keys, list dashes and values. */
+function yaml(line: string): string {
+  if (/^\s*#/.test(line)) return span("cm", line);
+  const pair = line.match(/^(\s*)(- )?([\w-]+)(:)(?: (.*))?$/);
+  if (!pair) return esc(line);
+  const [, indent, dash = "", key, colon, value] = pair;
+  const kind = value?.startsWith("http") ? "u" : value?.startsWith('"') ? "js" : /^\d+$/.test(value ?? "") ? "jb" : "k";
+  const tail = value === undefined ? "" : ` ${span(kind, value)}`;
+  return indent + (dash ? span("jp", dash) : "") + span("jk", key) + span("jp", colon) + tail;
+}
+
+const refresh = ["blackhole-threats -conf lab.yaml -once"];
+const refreshOutput = `time=2026-11-05T04:38:15Z level=info msg="Parsed threat feed" prefixes_read=4 source=./local-feed.txt
+time=2026-11-05T04:38:15Z level=info msg="Prepared community routes" community=64520:1200 feed_count=1 prefixes_read=4 prefixes_summarized=3
+time=2026-11-05T04:38:15Z level=info msg="Refresh completed" active_routes=3 announced=3 duration_ms=2 withdrawn=0
+time=2026-11-05T04:38:15Z level=info msg="Completed single refresh cycle"`;
+const config = `gobgp:
+  global:
+    config:
+      as: 64520
+      routerid: "198.51.100.10"
+  neighbors:
+    - config:
+        neighboraddress: "198.51.100.1"
+        peeras: 64520
+    - config:
+        neighboraddress: "2001:db8:10::1"
+        peeras: 64520
+
+feeds:
+  - url: https://team-cymru.org/Services/Bogons/fullbogons-ipv4.txt
+    community: 64520:1101
+  - url: https://team-cymru.org/Services/Bogons/fullbogons-ipv6.txt
+    community: 64520:1101
+  - url: https://www.spamhaus.org/drop/drop_v4.json
+    community: 64520:1102`;
+const check = ["blackhole-threats -conf /etc/blackhole-threats.yaml -check-config"];
+
+const tabs = [
+  {
+    id: "refresh",
+    label: "One refresh",
+    copy: refresh.join("\n"),
+    lines: [
+      span("cm", "# the quickstart's run, startup lines left out"),
+      ...commandLines(refresh),
+      "",
+      ...refreshOutput.split("\n").map(logfmt),
+    ],
+  },
+  {
+    id: "config",
+    label: "Config",
+    copy: config,
+    lines: [span("cm", "# examples/blackhole-threats.yaml, shortened"), ...config.split("\n").map(yaml)],
+  },
+  {
+    id: "check",
+    label: "Check",
+    copy: check.join("\n"),
+    lines: [
+      span("cm", "# the Debian package installs the example config here"),
+      ...commandLines(check),
+      "",
+      span("y", "configuration OK: 11 feed(s)"),
+    ],
+  },
+];
+const install = "docker pull ghcr.io/netspeedy/blackhole-threats:latest";
+const copyIcon =
+  '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>';
+---
+
+<section class="ns-home-top not-content">
+  <div class="ns-home-copy">
+    <p class="ns-home-label">{product.name} documentation{release.tagged && ` · ${release.version}`}</p>
+    <h1 id="_top">{lines.map((line, i) => (i ? [<br />, line] : line))}</h1>
+    <div class="ns-home-lead"><slot /></div>
+    <div class="ns-home-actions">
+      <a class="ns-button ns-button-primary" href={`${import.meta.env.BASE_URL}quickstart/`}>
+        Read the quickstart
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+      </a>
+      <a class="ns-button" href={`${import.meta.env.BASE_URL}how-it-works/`}>How it works</a>
+    </div>
+    <ns-copy class="ns-home-install" data-copy={install}>
+      <code><span class="ns-prompt">$ </span>{install}</code>
+      <button type="button" aria-label="Copy the install command" set:html={copyIcon} />
+    </ns-copy>
+  </div>
+
+  <ns-code-tabs class="ns-panel">
+    <div class="ns-panel-head">
+      <div role="tablist" aria-label="Examples">
+        {
+          tabs.map((tab, i) => (
+            <button
+              type="button"
+              role="tab"
+              id={`ns-tab-${tab.id}`}
+              aria-controls={`ns-panel-${tab.id}`}
+              aria-selected={i === 0 ? "true" : "false"}
+              tabindex={i === 0 ? 0 : -1}
+            >
+              {tab.label}
+            </button>
+          ))
+        }
+      </div>
+      <button type="button" class="ns-panel-copy" aria-label="Copy the command" set:html={copyIcon} />
+    </div>
+    {
+      tabs.map((tab, i) => (
+        <div
+          class="ns-panel-body"
+          role="tabpanel"
+          id={`ns-panel-${tab.id}`}
+          aria-labelledby={`ns-tab-${tab.id}`}
+          data-copy={tab.copy}
+          hidden={i !== 0}
+          tabindex="0"
+        >
+          <pre set:html={tab.lines.join("\n")} />
+        </div>
+      ))
+    }
+  </ns-code-tabs>
+</section>
+
+<script>
+  async function copy(text: string, button: HTMLElement) {
+    try {
+      await navigator.clipboard.writeText(text);
+      button.dataset.copied = "";
+      setTimeout(() => delete button.dataset.copied, 1600);
+    } catch {
+      // No clipboard access (an insecure origin or a refused permission): leave the text to select.
+    }
+  }
+
+  class CopyText extends HTMLElement {
+    connectedCallback() {
+      const button = this.querySelector("button");
+      button?.addEventListener("click", () => copy(this.dataset.copy ?? "", button));
+    }
+  }
+
+  class CodeTabs extends HTMLElement {
+    connectedCallback() {
+      const tabs = [...this.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+      const select = (chosen: HTMLButtonElement) => {
+        for (const tab of tabs) {
+          const on = tab === chosen;
+          tab.setAttribute("aria-selected", String(on));
+          tab.tabIndex = on ? 0 : -1;
+          const panel = document.getElementById(tab.getAttribute("aria-controls") ?? "");
+          if (panel) panel.hidden = !on;
+        }
+      };
+      tabs.forEach((tab, i) => {
+        tab.addEventListener("click", () => select(tab));
+        tab.addEventListener("keydown", (event) => {
+          const step = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
+          if (!step) return;
+          const next = tabs[(i + step + tabs.length) % tabs.length];
+          select(next);
+          next.focus();
+        });
+      });
+      const copyButton = this.querySelector<HTMLButtonElement>(".ns-panel-copy");
+      copyButton?.addEventListener("click", () => {
+        const panel = this.querySelector<HTMLElement>('[role="tabpanel"]:not([hidden])');
+        if (panel) copy(panel.dataset.copy ?? "", copyButton);
+      });
+    }
+  }
+
+  customElements.define("ns-copy", CopyText);
+  customElements.define("ns-code-tabs", CodeTabs);
+</script>
+
+<style>
+  .ns-home-top {
+    display: grid;
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+    gap: 3.5rem;
+    align-items: center;
+    padding: 2.5rem 0 4rem;
+  }
+  .ns-home-label {
+    margin: 0;
+    font-family: var(--__sl-font-mono);
+    font-size: var(--sl-text-xs);
+    color: var(--sl-color-gray-3);
+  }
+  h1 {
+    margin: 0.875rem 0 0;
+    /* A little smaller than the other sites' headlines, so "Blackhole routes out." keeps to one
+       line beside the panel. */
+    font-size: clamp(2.125rem, 1.4rem + 2.2vw, 2.875rem);
+    line-height: 1.06;
+    font-weight: 700;
+    letter-spacing: -0.038em;
+    color: var(--sl-color-white);
+  }
+  .ns-home-lead {
+    max-width: 32.5rem;
+    margin-top: 1.25rem;
+    font-size: var(--sl-text-lg);
+    line-height: 1.65;
+    color: var(--sl-color-gray-2);
+  }
+  .ns-home-lead :global(p) {
+    margin: 0;
+  }
+  .ns-home-lead :global(code) {
+    padding: 0.0625rem 0.3125rem;
+    border: 1px solid var(--sl-color-hairline-shade);
+    border-radius: 5px;
+    background-color: var(--sl-color-gray-7);
+    font-size: 0.84em;
+    color: var(--sl-color-white);
+    white-space: nowrap;
+  }
+  .ns-home-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.625rem;
+    margin-top: 1.875rem;
+  }
+  .ns-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    height: 2.75rem;
+    padding: 0 1.125rem;
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 9px;
+    font-size: var(--sl-text-sm);
+    font-weight: 600;
+    color: var(--sl-color-white);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .ns-button:hover {
+    border-color: var(--sl-color-gray-3);
+  }
+  .ns-button svg {
+    width: 1rem;
+    height: 1rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .ns-button-primary {
+    border-color: var(--sl-color-white);
+    background-color: var(--sl-color-white);
+    color: var(--sl-color-black);
+  }
+  .ns-button-primary:hover {
+    border-color: var(--sl-color-gray-1);
+    background-color: var(--sl-color-gray-1);
+  }
+  .ns-home-install {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    margin-top: 1.25rem;
+  }
+  .ns-home-install code {
+    font-family: var(--__sl-font-mono);
+    font-size: var(--sl-text-xs);
+    color: var(--sl-color-gray-2);
+  }
+  .ns-prompt {
+    color: var(--sl-color-gray-3);
+  }
+  button {
+    font: inherit;
+    cursor: pointer;
+  }
+  .ns-home-install button,
+  .ns-panel-copy {
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    border: 0;
+    border-radius: 7px;
+    background: none;
+    color: var(--sl-color-gray-3);
+  }
+  .ns-home-install button:hover {
+    color: var(--sl-color-white);
+  }
+  .ns-home-install button :global(svg),
+  .ns-panel-copy :global(svg) {
+    width: 0.9375rem;
+    height: 0.9375rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linejoin: round;
+  }
+  [data-copied] {
+    color: var(--ns-ok) !important;
+  }
+
+  /* The panel is dark in both themes, like every code block on the site. */
+  .ns-panel {
+    display: block;
+    min-width: 0;
+    border: 1px solid #1c2330;
+    border-radius: 14px;
+    background-color: #0b0f16;
+    box-shadow: 0 30px 60px -30px rgb(11 18 32 / 0.45);
+    overflow: hidden;
+    color: #dce4ee;
+  }
+  :global([data-theme="dark"]) .ns-panel {
+    box-shadow: none;
+  }
+  .ns-panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    height: 2.75rem;
+    padding: 0 0.375rem;
+    border-bottom: 1px solid #1c2330;
+    background-color: #0f141d;
+  }
+  [role="tablist"] {
+    display: flex;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  [role="tab"] {
+    padding: 0.75rem 0.75rem 0.625rem;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: none;
+    font-size: var(--sl-text-xs);
+    color: #8f9bab;
+    white-space: nowrap;
+  }
+  [role="tab"]:hover {
+    color: #e8ecf1;
+  }
+  [role="tab"][aria-selected="true"] {
+    border-bottom-color: #4bd8ff;
+    font-weight: 500;
+    color: #e8ecf1;
+  }
+  .ns-panel-copy {
+    flex: 0 0 auto;
+    color: #8f9bab;
+  }
+  .ns-panel-copy:hover {
+    color: #e8ecf1;
+  }
+  .ns-panel-body {
+    overflow-x: auto;
+  }
+  .ns-panel-body:focus-visible {
+    outline: 2px solid #4bd8ff;
+    outline-offset: -2px;
+  }
+  pre {
+    margin: 0;
+    padding: 1rem 1.125rem 1.25rem;
+    font-family: var(--__sl-font-mono);
+    font-size: 0.8125rem;
+    line-height: 1.75;
+  }
+  pre :global(.p) {
+    color: #f5b841;
+  }
+  pre :global(.c),
+  pre :global(.h) {
+    color: #ffffff;
+    font-weight: 600;
+  }
+  pre :global(.f) {
+    color: #7fe3ff;
+  }
+  pre :global(.v) {
+    color: #fde1a7;
+  }
+  pre :global(.m),
+  pre :global(.jp) {
+    color: #7d8999;
+  }
+  pre :global(.k) {
+    color: #a8ecff;
+  }
+  pre :global(.y) {
+    color: #3cd788;
+  }
+  pre :global(.d),
+  pre :global(.jb) {
+    color: #f5b841;
+  }
+  pre :global(.g),
+  pre :global(.cm) {
+    color: #6b7686;
+    font-style: italic;
+  }
+  pre :global(.jk) {
+    color: #a5b1ff;
+  }
+  pre :global(.js),
+  pre :global(.u) {
+    color: #6fd8a5;
+  }
+  /* A log line: it wraps between fields, and wrapped lines hang two characters in. */
+  pre :global(.ln) {
+    display: inline-block;
+    box-sizing: border-box;
+    width: 100%;
+    padding-left: 2ch;
+    text-indent: -2ch;
+    white-space: pre-wrap;
+  }
+  pre :global(.pr) {
+    white-space: nowrap;
+  }
+  pre :global(.e) {
+    color: #ff5d6c;
+  }
+
+  @media (max-width: 56rem) {
+    .ns-home-top {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 2.25rem;
+      padding: 1rem 0 3.5rem;
+    }
+  }
+</style>

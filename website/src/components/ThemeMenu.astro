@@ -1,0 +1,217 @@
+---
+// The header's theme control: one button showing the chosen theme, which opens a menu of Light,
+// Dark and System. The phone menu has the same choice as a three-way switch (ThemeSelect.astro);
+// src/lib/theme.ts keeps the two in step.
+import { icons } from "../lib/icons";
+
+const options = [
+  { value: "light", label: "Light" },
+  { value: "dark", label: "Dark" },
+  { value: "auto", label: "System" },
+] as const;
+---
+
+<ns-theme-menu class="ns-theme-menu" data-pref="auto">
+  <button
+    class="ns-theme-button"
+    type="button"
+    aria-label="Colour theme"
+    title="Colour theme"
+    aria-haspopup="menu"
+    aria-expanded="false"
+    aria-controls="ns-theme-menu"
+  >
+    {options.map(({ value }) => <svg class={value} viewBox="0 0 24 24" aria-hidden="true" set:html={icons[value]} />)}
+  </button>
+  <div id="ns-theme-menu" class="ns-menu" role="menu" aria-label="Colour theme" hidden>
+    {
+      options.map(({ value, label }) => (
+        <button type="button" role="menuitemradio" aria-checked="false" tabindex="-1" data-value={value}>
+          <svg viewBox="0 0 24 24" aria-hidden="true" set:html={icons[value]} />
+          {label}
+          <svg class="check" viewBox="0 0 24 24" aria-hidden="true" set:html={icons.check} />
+        </button>
+      ))
+    }
+  </div>
+</ns-theme-menu>
+
+{/* Inlined so the button shows the right theme on first paint. */}
+<script is:inline>
+  (() => {
+    let stored = null;
+    try {
+      stored = localStorage.getItem("starlight-theme");
+    } catch {}
+    const value = stored === "light" || stored === "dark" ? stored : "auto";
+    document.querySelectorAll("ns-theme-menu").forEach((menu) => {
+      menu.dataset.pref = value;
+      menu.querySelectorAll("[data-value]").forEach((item) => {
+        item.setAttribute("aria-checked", String(item.dataset.value === value));
+      });
+    });
+  })();
+</script>
+
+<script>
+  import { applyTheme, loadTheme, onThemeChange, parseTheme, type Theme } from "../lib/theme";
+
+  // A menu button as the ARIA practices describe it: Enter, Space or the arrow keys open it on the
+  // chosen item, the arrows, Home and End move through it, and Escape closes it and returns to the
+  // button. Choosing an item, clicking outside or tabbing away closes it too.
+  class ThemeMenu extends HTMLElement {
+    connectedCallback() {
+      const button = this.querySelector<HTMLButtonElement>(".ns-theme-button")!;
+      const menu = this.querySelector<HTMLElement>('[role="menu"]')!;
+      const items = [...menu.querySelectorAll<HTMLButtonElement>("[data-value]")];
+
+      const show = (theme: Theme) => {
+        this.dataset.pref = theme;
+        items.forEach((item) => item.setAttribute("aria-checked", String(item.dataset.value === theme)));
+      };
+      const open = (focus: "chosen" | "first" | "last") => {
+        menu.hidden = false;
+        button.setAttribute("aria-expanded", "true");
+        const chosen = items.find((item) => item.getAttribute("aria-checked") === "true");
+        (focus === "first" ? items[0] : focus === "last" ? items.at(-1) : chosen ?? items[0])?.focus();
+      };
+      const close = (refocus: boolean) => {
+        if (menu.hidden) return;
+        menu.hidden = true;
+        button.setAttribute("aria-expanded", "false");
+        if (refocus) button.focus();
+      };
+
+      show(loadTheme());
+      onThemeChange(show);
+
+      button.addEventListener("click", () => (menu.hidden ? open("chosen") : close(false)));
+      button.addEventListener("keydown", (event) => {
+        if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+        event.preventDefault();
+        open(event.key === "ArrowDown" ? "first" : "last");
+      });
+      menu.addEventListener("click", (event) => {
+        const item = (event.target as Element).closest<HTMLButtonElement>("[data-value]");
+        if (!item) return;
+        applyTheme(parseTheme(item.dataset.value));
+        close(true);
+      });
+      menu.addEventListener("keydown", (event) => {
+        const index = items.indexOf(document.activeElement as HTMLButtonElement);
+        const move = (to: number) => items[(to + items.length) % items.length].focus();
+        if (event.key === "ArrowDown") move(index + 1);
+        else if (event.key === "ArrowUp") move(index - 1);
+        else if (event.key === "Home") move(0);
+        else if (event.key === "End") move(items.length - 1);
+        else if (event.key === "Escape") close(true);
+        else {
+          // Tab moves on as usual, from wherever the menu sat.
+          if (event.key === "Tab") close(false);
+          return;
+        }
+        event.preventDefault();
+      });
+      document.addEventListener("pointerdown", (event) => {
+        if (!this.contains(event.target as Node)) close(false);
+      });
+    }
+  }
+
+  customElements.define("ns-theme-menu", ThemeMenu);
+</script>
+
+<style>
+  .ns-theme-menu {
+    position: relative;
+    display: flex;
+  }
+  .ns-theme-button {
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--sl-color-gray-2);
+    cursor: pointer;
+  }
+  .ns-theme-button:hover {
+    background-color: var(--ns-hover-fill);
+    color: var(--sl-color-white);
+  }
+  .ns-theme-button[aria-expanded="true"] {
+    background-color: var(--ns-current-bg);
+    color: var(--ns-current-ink);
+  }
+  .ns-theme-button svg {
+    display: none;
+    grid-area: 1 / 1;
+  }
+  [data-pref="light"] .ns-theme-button .light,
+  [data-pref="dark"] .ns-theme-button .dark,
+  [data-pref="auto"] .ns-theme-button .auto {
+    display: block;
+  }
+  svg {
+    width: 1.0625rem;
+    height: 1.0625rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.9;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .ns-menu {
+    position: absolute;
+    inset-inline-end: 0;
+    top: calc(100% + 0.5rem);
+    z-index: 10;
+    min-width: 11.5rem;
+    padding: 6px;
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 12px;
+    background-color: var(--ns-menu-bg);
+    box-shadow: var(--ns-menu-shadow);
+  }
+  .ns-menu button {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    width: 100%;
+    padding: 0.5rem 0.625rem;
+    border: 0;
+    border-radius: 8px;
+    background: none;
+    font: inherit;
+    font-size: var(--sl-text-sm);
+    color: var(--sl-color-gray-2);
+    text-align: start;
+    cursor: pointer;
+  }
+  .ns-menu button:hover,
+  .ns-menu button:focus-visible {
+    background-color: var(--ns-hover-fill);
+    color: var(--sl-color-white);
+  }
+  .ns-menu button[aria-checked="true"] {
+    font-weight: 500;
+    color: var(--sl-color-white);
+  }
+  .ns-menu svg {
+    width: 1rem;
+    height: 1rem;
+    stroke-width: 2;
+  }
+  .ns-menu .check {
+    margin-inline-start: auto;
+    color: var(--sl-color-text-accent);
+    visibility: hidden;
+  }
+  [aria-checked="true"] .check {
+    visibility: visible;
+  }
+</style>

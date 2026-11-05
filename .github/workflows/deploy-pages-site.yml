@@ -109,35 +109,6 @@ jobs:
           test -f site/blackhole-threats-archive-keyring.gpg
           test -f site/blackhole-threats-archive-keyring.fingerprint.txt
 
-      - name: Refresh published website metadata
-        id: website_metadata
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          fingerprint="$(tr '\n' ' ' < site/blackhole-threats-archive-keyring.fingerprint.txt | sed 's/[[:space:]]\+/ /g; s/^ //; s/ $//')"
-          highlights_json="$(
-            bash scripts/generate-website-highlights.sh "${{ steps.published.outputs.stable_tag }}" \
-              | jq -Rsc 'split("\n") | map(select(length > 0))'
-          )"
-
-          jq -n \
-            --arg site_url "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/" \
-            --arg release_version "${{ steps.published.outputs.stable_tag }}" \
-            --arg commit "${{ steps.published.outputs.stable_sha }}" \
-            --arg build_date "${{ steps.published.outputs.stable_build_date }}" \
-            --arg apt_fingerprint "${fingerprint}" \
-            --argjson release_highlights "${highlights_json}" \
-            '{
-              site_url: $site_url,
-              release_version: $release_version,
-              commit: $commit,
-              build_date: $build_date,
-              apt_fingerprint: $apt_fingerprint,
-              release_highlights: $release_highlights
-            }' > site/website-metadata.json
-
-          echo "release_highlights_json=${highlights_json}" >> "$GITHUB_OUTPUT"
-
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
@@ -145,19 +116,50 @@ jobs:
           cache: npm
           cache-dependency-path: ${{ env.WEBSITE_DIR }}/package-lock.json
 
-      - name: Build landing site
+      - name: Build Pages site
         env:
-          PUBLIC_RELEASE_HIGHLIGHTS_JSON: ${{ steps.website_metadata.outputs.release_highlights_json }}
+          GH_TOKEN: ${{ github.token }}
+          STABLE_TAG: ${{ steps.published.outputs.stable_tag }}
+          STABLE_SHA: ${{ steps.published.outputs.stable_sha }}
         run: |
+          # The site reads the release details at build time, so write them first. They describe
+          # the stable release the restored APT snapshot was built from.
+          metadata="${RUNNER_TEMP}/website-metadata.json"
+          site_url="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"
+          fingerprint="$(tr '\n' ' ' < site/blackhole-threats-archive-keyring.fingerprint.txt | sed 's/[[:space:]]\+/ /g; s/^ //; s/ $//')"
+          release_url="$(gh release view "${STABLE_TAG}" --json url --jq .url)"
+          test -n "${fingerprint}"
+          test -n "${release_url}"
+
+          jq -n \
+            --arg site_url "${site_url}" \
+            --arg tag "${STABLE_TAG}" \
+            --arg release_url "${release_url}" \
+            --arg commit "${STABLE_SHA}" \
+            --arg fingerprint "${fingerprint}" \
+            '{
+              site_url: $site_url,
+              latest_release: {
+                tag_name: $tag,
+                html_url: $release_url
+              },
+              release_commit: $commit,
+              apt_repository: {
+                available: true,
+                url: $site_url,
+                suite: "stable",
+                component: "main",
+                key_url: ($site_url + "blackhole-threats-archive-keyring.gpg"),
+                fingerprint: $fingerprint
+              }
+            }' > "${metadata}"
+
           npm ci --prefix "${WEBSITE_DIR}"
-          make website-build \
-            WEBSITE_DIR="${WEBSITE_DIR}" \
-            SITE_URL=https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/ \
-            SITE_RELEASE_VERSION="${{ steps.published.outputs.stable_tag }}" \
-            SITE_COMMIT="${{ steps.published.outputs.stable_sha }}" \
-            SITE_BUILD_DATE="${{ steps.published.outputs.stable_build_date }}" \
-            SITE_APT_FINGERPRINT="$(jq -r '.apt_fingerprint' site/website-metadata.json)"
+          SITE_METADATA_FILE="${metadata}" make website-build WEBSITE_DIR="${WEBSITE_DIR}"
+          make website-check WEBSITE_DIR="${WEBSITE_DIR}"
           cp -a "${WEBSITE_DIR}/dist/." site/
+          cp "${metadata}" site/website-metadata.json
+          touch site/.nojekyll
           test -f site/index.html
           test -f site/dists/stable/InRelease
           test -f site/website-metadata.json

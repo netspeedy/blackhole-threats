@@ -1,0 +1,30 @@
+---
+// The product's mark. src/assets/mark.svg is written by scripts/readme/build_readme_hero.py from the
+// same geometry as the favicon and the README banner, so run `make readme-hero` to change it.
+// It's drawn in currentColor and takes --ns-mark here: cyan on the dark theme, deep cyan on the
+// light one.
+import mark from "../assets/mark.svg?raw";
+
+interface Props {
+  size?: number;
+}
+
+const { size = 26 } = Astro.props;
+---
+
+<span class="ns-mark" style={`--ns-mark-size: ${size}px`} set:html={mark} />
+
+<style>
+  .ns-mark {
+    display: block;
+    flex: none;
+    width: var(--ns-mark-size);
+    height: var(--ns-mark-size);
+    color: var(--ns-mark);
+  }
+  .ns-mark :global(svg) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+</style>

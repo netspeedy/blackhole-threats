@@ -1,0 +1,49 @@
+---
+// A section's icon in a small tile of its colour. The large one heads the home page's cards.
+import type { Section } from "../lib/sections";
+
+interface Props {
+  section: Section;
+  large?: boolean;
+}
+
+const { section, large = false } = Astro.props;
+---
+
+<span class:list={["ns-section-icon", { large }]} style={`--cc: var(--ns-${section.hue}); --cb: var(--ns-${section.hue}-bg); --cl: var(--ns-${section.hue}-line)`}>
+  <svg viewBox="0 0 24 24" aria-hidden="true" set:html={section.icon} />
+</span>
+
+<style>
+  .ns-section-icon {
+    display: inline-grid;
+    flex: 0 0 auto;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    box-sizing: border-box;
+    border: 1px solid var(--cl);
+    border-radius: 6px;
+    background-color: var(--cb);
+    color: var(--cc);
+  }
+  .large {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+  }
+  svg {
+    width: 13px;
+    height: 13px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.1;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .large svg {
+    width: 17px;
+    height: 17px;
+    stroke-width: 1.9;
+  }
+</style>
