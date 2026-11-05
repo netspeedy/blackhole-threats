@@ -71,9 +71,9 @@ automation.
   ```bash
   make package
   ```
-- Build the GitHub Pages site locally after installing `website/`
-  dependencies:
+- Build the GitHub Pages site locally:
   ```bash
+  make website-install
   make website-build
   ```
 - When editing the APT repository builder, at minimum syntax-check it:
@@ -171,11 +171,12 @@ automation.
   published repository snapshot rather than forcing a new release tag or
   rebuilding unsigned repository metadata.
 - Documentation-only, README-only, architecture-only, website-only, and
-  Pages-only changes are non-release-bearing by default. They may refresh the
-  GitHub Pages site from `main`, but they must not create or advance a release
-  draft, release-candidate tag, or stable tag unless the same change also
-  intentionally changes shipped runtime, container, Debian, or release-pipeline
-  behavior.
+  Pages-only changes are non-release-bearing: they never start a release on
+  their own, and they refresh the GitHub Pages site from `main`. While
+  release-bearing commits are waiting for stable promotion, though, every
+  validated push to `main` tags the next release candidate, docs-only pushes
+  included, because `scripts/next-release.sh` counts from the last stable tag.
+  That's expected.
 - `scripts/build-apt-repository.sh` is expected to keep publishing both binary
   and source package indexes. Do not regress `deb-src` support.
 - Keep Debian changelog entries factual, operator-facing, and suitable for an
@@ -269,8 +270,8 @@ automation.
 - If you change `website/` or GitHub Pages publishing behavior,
   also run:
   ```bash
-  npm ci --prefix website
-  npm --prefix website run check
+  make website-install
+  make website-check
   make website-build
   ```
 - If you change `scripts/build-apt-repository.sh`, also run:
@@ -350,6 +351,8 @@ automation.
   package section.
 - If APT publication, signing, or Pages behavior changes, update the README APT
   repository section.
+- If the `make website-*` targets, the site's build inputs, or the workflows that
+  publish it change, update `website/README.md`.
 - If workflow names, publish conditions, or security posture change, update the
   README CI/CD and contributing sections.
 - If contribution, conduct, security, support, governance, roadmap, funding, or

@@ -17,7 +17,7 @@ LDFLAGS ?= -s -w \
 	-X $(PKG)/internal/buildinfo.Commit=$(COMMIT) \
 	-X $(PKG)/internal/buildinfo.BuildDate=$(BUILD_DATE)
 
-.PHONY: fmt fmt-check vet test build build-cross docker-build website-build readme-hero clean package
+.PHONY: fmt fmt-check vet test build build-cross docker-build website-install website-dev website-check website-build readme-hero clean package
 
 test:
 	$(GO) test ./...
@@ -50,7 +50,19 @@ docker-build:
 		-t $(BINARY):dev \
 		.
 
+website-install:
+	npm --prefix $(WEBSITE_DIR) ci
+
+website-dev:
+	test -d $(WEBSITE_DIR)/node_modules || (printf 'missing website dependencies; run `make website-install`\n' >&2 && exit 1)
+	npm --prefix $(WEBSITE_DIR) run dev
+
+website-check:
+	test -d $(WEBSITE_DIR)/node_modules || (printf 'missing website dependencies; run `make website-install`\n' >&2 && exit 1)
+	npm --prefix $(WEBSITE_DIR) run check
+
 website-build:
+	test -d $(WEBSITE_DIR)/node_modules || (printf 'missing website dependencies; run `make website-install`\n' >&2 && exit 1)
 	PUBLIC_SITE_URL=$(SITE_URL) \
 	PUBLIC_RELEASE_VERSION=$(SITE_RELEASE_VERSION) \
 	PUBLIC_COMMIT=$(SITE_COMMIT) \
