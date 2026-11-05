@@ -104,7 +104,7 @@ autolabeler:
       - '/^dependabot\/gomod\/.+/'
     title:
       - '/^(deps|build|container)(\([^)]+\))?: bump /i'
-      - '/^chore: refresh /i'
+      - '/^(chore|container): refresh /i'
   - label: github-actions
     files:
       - ".github/workflows/**/*"

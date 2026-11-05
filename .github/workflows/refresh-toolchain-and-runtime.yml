@@ -56,6 +56,8 @@ jobs:
           sed -i "s/^ARG S6_OVERLAY_SYMLINKS_NOARCH_SHA256=.*/ARG S6_OVERLAY_SYMLINKS_NOARCH_SHA256=${symlinks_noarch_sha256}/" Dockerfile
           sed -i "s/^ARG S6_OVERLAY_SYMLINKS_ARCH_SHA256=.*/ARG S6_OVERLAY_SYMLINKS_ARCH_SHA256=${symlinks_arch_sha256}/" Dockerfile
 
+      # The refresh only changes Dockerfile pins, so it always changes the published image. It's
+      # titled container:, like Dependabot's image updates, so it cuts a release.
       - name: Create pull request
         id: create-pr
         uses: peter-evans/create-pull-request@v8
@@ -63,8 +65,8 @@ jobs:
           add-paths: |
             Dockerfile
           branch: automation/refresh-build-and-runtime-pins
-          commit-message: "chore: refresh build and runtime pins"
-          title: "chore: refresh build and runtime pins"
+          commit-message: "container: refresh build and runtime pins"
+          title: "container: refresh build and runtime pins"
           body: |
             Refreshes the pinned Docker Go build image version and updates the
             pinned Docker `s6-overlay` version and checksum pins in
