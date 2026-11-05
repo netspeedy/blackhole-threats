@@ -410,3 +410,168 @@ jobs:
           fi
 
           gh release create "${release_ref}" "${assets[@]}" "${create_args[@]}"
+
+  # The first stable release of a new line (vX.Y.0) freezes the docs of the line before it. They're
+  # rebuilt from the last commit before the new line started, under /<repo>/vX.Y/, and attached to
+  # that line's last release, where both Pages workflows pick them up.
+  docs-archive:
+    name: Build Archived Docs
+    if: |
+      startsWith(github.ref, 'refs/tags/v') ||
+      (github.event_name == 'workflow_dispatch' && startsWith(inputs.release_ref || '', 'v'))
+    needs:
+      - publish
+    runs-on: ubuntu-latest
+    outputs:
+      built: ${{ steps.build.outputs.built }}
+      asset: ${{ steps.line.outputs.asset }}
+      tag: ${{ steps.line.outputs.tag }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ env.CHECKOUT_REF }}
+
+      - name: Find the outgoing line
+        id: line
+        env:
+          REPO_NAME: ${{ github.event.repository.name }}
+        run: |
+          set -euo pipefail
+
+          skip() {
+            printf '%s\n' "$1" >> "${GITHUB_STEP_SUMMARY}"
+            echo "archive=false" >> "${GITHUB_OUTPUT}"
+            exit 0
+          }
+
+          if [[ ! "${RELEASE_REF}" =~ ^v[0-9]+\.[0-9]+\.0$ ]]; then
+            skip "\`${RELEASE_REF}\` doesn't start a new line, so no docs are archived."
+          fi
+
+          previous_tag="$(bash scripts/previous-tag.sh "${RELEASE_REF}")"
+          if [ -z "${previous_tag}" ]; then
+            skip "\`${RELEASE_REF}\` is the first release, so there's no earlier line to archive."
+          fi
+          line="$(sed -E 's/^(v[0-9]+\.[0-9]+)\..*/\1/' <<<"${previous_tag}")"
+
+          if ! commit="$(bash scripts/docs-archive-commit.sh "${previous_tag}" "${RELEASE_REF}")"; then
+            skip "No commit between \`${previous_tag}\` and \`${RELEASE_REF}\` starts a new line, so no docs are archived."
+          fi
+          site_dir="$(git ls-tree -r --name-only "${commit}" | sed -n 's|^\([^/]*\)/astro\.config\.mjs$|\1|p' | head -n1)"
+          if [ -z "${site_dir}" ] || ! git show "${commit}:${site_dir}/astro.config.mjs" | grep -q SITE_ARCHIVE; then
+            skip "The ${line} docs at \`${commit}\` predate versioned docs, so they aren't archived."
+          fi
+
+          git worktree add --detach archive-src "${commit}"
+          {
+            echo "archive=true"
+            echo "line=${line}"
+            echo "tag=${previous_tag}"
+            echo "commit=${commit}"
+            echo "site_dir=${site_dir}"
+            echo "asset=${REPO_NAME}-docs-${line}.tar.gz"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Set up Node.js
+        if: steps.line.outputs.archive == 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          check-latest: true
+          cache: npm
+          cache-dependency-path: archive-src/${{ steps.line.outputs.site_dir }}/package-lock.json
+
+      - name: Write the archived docs' release details
+        if: steps.line.outputs.archive == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.line.outputs.tag }}
+        run: |
+          set -euo pipefail
+
+          # The pages show the line's last release and the archive key's fingerprint, as they did
+          # while it was the latest. The key is the one the APT repository is signed with now.
+          site_url="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"
+          gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" > archive-release.json
+          fingerprint="$(curl -fsSL "${site_url}blackhole-threats-archive-keyring.fingerprint.txt" 2>/dev/null \
+            | tr '\n' ' ' | sed 's/[[:space:]]\+/ /g; s/^ //; s/ $//' || true)"
+          jq -n \
+            --arg site_url "${site_url}" \
+            --arg fingerprint "${fingerprint}" \
+            --slurpfile latest_release archive-release.json \
+            '{
+              site_url: $site_url,
+              latest_release: $latest_release[0],
+              apt_repository: {
+                available: ($fingerprint != ""),
+                url: $site_url,
+                suite: "stable",
+                component: "main",
+                key_url: ($site_url + "blackhole-threats-archive-keyring.gpg"),
+                fingerprint: $fingerprint
+              }
+            }' > "${RUNNER_TEMP}/archive-metadata.json"
+
+      # A failed archive mustn't fail the release, which the release automation waits on. The
+      # summary says what happened, and docs/release-and-publishing.md has the steps to build one
+      # by hand.
+      - name: Build the archived docs
+        id: build
+        if: steps.line.outputs.archive == 'true'
+        continue-on-error: true
+        env:
+          LINE: ${{ steps.line.outputs.line }}
+          TAG: ${{ steps.line.outputs.tag }}
+          COMMIT: ${{ steps.line.outputs.commit }}
+          SITE_DIR: ${{ steps.line.outputs.site_dir }}
+          ASSET: ${{ steps.line.outputs.asset }}
+        run: |
+          set -euo pipefail
+
+          printf "Building the %s docs from \`%s\` for release \`%s\`.\n" "${LINE}" "${COMMIT}" "${TAG}" >> "${GITHUB_STEP_SUMMARY}"
+          npm ci --prefix "archive-src/${SITE_DIR}"
+          export SITE_ARCHIVE="${LINE}" SITE_METADATA_FILE="${RUNNER_TEMP}/archive-metadata.json"
+          make -C archive-src website-build website-check WEBSITE_DIR="${SITE_DIR}"
+          tar -C "archive-src/${SITE_DIR}/dist" -czf "${ASSET}" .
+
+          printf "Archived them as \`%s\`.\n" "${ASSET}" >> "${GITHUB_STEP_SUMMARY}"
+          echo "built=true" >> "${GITHUB_OUTPUT}"
+
+      - name: Report a failed archive
+        if: steps.line.outputs.archive == 'true' && steps.build.outputs.built != 'true'
+        run: |
+          echo "::warning::The ${{ steps.line.outputs.line }} docs archive didn't build, so the line isn't published. See docs/release-and-publishing.md to build it by hand."
+          echo "The archive didn't build; see the step log. docs/release-and-publishing.md has the steps to build it by hand." >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Upload archived docs
+        if: steps.build.outputs.built == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: docs-archive
+          path: ${{ steps.line.outputs.asset }}
+
+  publish-docs-archive:
+    name: Publish Archived Docs
+    if: needs.docs-archive.outputs.built == 'true'
+    needs:
+      - docs-archive
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download archived docs
+        uses: actions/download-artifact@v8
+        with:
+          name: docs-archive
+
+      - name: Attach them to the line's last release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.docs-archive.outputs.tag }}
+          ASSET: ${{ needs.docs-archive.outputs.asset }}
+        run: gh release upload "${TAG}" "${ASSET}" --clobber --repo "${GITHUB_REPOSITORY}"

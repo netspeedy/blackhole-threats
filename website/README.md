@@ -37,9 +37,13 @@ can be older than Astro's minimum, which is in `engines` in `package.json`.
 
 ## Versioned docs
 
-Only the latest release line's pages live here. Keep page links root-relative
-(`/blackhole-threats/...`), so an older line built under `/blackhole-threats/vX.Y/` can rewrite
-them into its own path, and never copy pages into per-version folders.
+Only the latest release line's pages live here. When a new minor ships, the Release Assets
+workflow rebuilds the outgoing line from git with `SITE_ARCHIVE=vX.Y`, and the Pages workflows
+publish it under `/blackhole-threats/vX.Y/` beside the latest. Never copy pages into per-version
+folders, and keep page links root-relative (`/blackhole-threats/...`) so archived builds can
+rewrite them. The "Versioned docs" section of
+[docs/release-and-publishing.md](../docs/release-and-publishing.md#versioned-docs) has the
+details, including how to rebuild an archive by hand.
 
 ## How it's published
 
@@ -49,9 +53,11 @@ absolute URLs, because they aren't part of the build and `make website-check` on
 into it.
 
 Publish Signed Debian Repository deploys the site at release time, with the new packages. Deploy
-Pages Site runs on every push to `main` and after each of those publish runs: it restores the last
-published APT snapshot, writes the stable release's tag and the archive key's fingerprint to a
-JSON file, builds the site with it in `SITE_METADATA_FILE`, runs `make website-check` and deploys
-both. Local and pull request builds have no metadata file, so they show the newest local tag and
-leave the fingerprint out. Dependabot checks the npm dependencies here daily and titles its pull
-requests `chore:`, so a site update doesn't cut a release.
+Pages Site runs on every push to `main`, after each of those publish runs and after each stable
+Release Assets run: it restores the last published APT snapshot, writes the stable release's tag
+and the archive key's fingerprint to a JSON file, builds the latest line with it in
+`SITE_METADATA_FILE`, unpacks the archived lines into it, runs `make website-check` over the
+result and deploys both. The release-time deploy unpacks the archived lines the same way. Local
+and pull request builds have no metadata file, so they show the newest local tag and leave the
+fingerprint out. Dependabot checks the npm dependencies here daily and titles its pull requests
+`chore:`, so a site update doesn't cut a release.
