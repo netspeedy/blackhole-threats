@@ -163,6 +163,38 @@ jobs:
             release-assets.yml \
             container-image.yml
 
+      # The candidate's publish workflows passed, so the same commit becomes the stable release.
+      - name: Create and push stable tag
+        if: steps.existing.outputs.release_required == 'true' && steps.release.outputs.release_required == 'true' && steps.changelog.outputs.updated != 'true'
+        env:
+          RELEASE_AUTOMATION_TOKEN: ${{ secrets.RELEASE_AUTOMATION_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # A tag pushed with GITHUB_TOKEN wouldn't start the stable publish workflows.
+          if [ -z "${RELEASE_AUTOMATION_TOKEN:-}" ]; then
+            echo "RELEASE_AUTOMATION_TOKEN is required to push the stable tag so its publish workflows run." >&2
+            exit 1
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ steps.candidate.outputs.stable_tag }}" "${RELEASE_SHA}" -m "Release ${{ steps.candidate.outputs.stable_tag }}"
+          git push "https://x-access-token:${RELEASE_AUTOMATION_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            "refs/tags/${{ steps.candidate.outputs.stable_tag }}"
+
+      - name: Wait for stable publish workflows
+        if: steps.existing.outputs.release_required == 'true' && steps.release.outputs.release_required == 'true' && steps.changelog.outputs.updated != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          bash scripts/wait-for-tag-workflow-runs.sh \
+            "${{ steps.candidate.outputs.stable_tag }}" \
+            "${RELEASE_SHA}" \
+            release-assets.yml \
+            container-image.yml \
+            publish-apt-repository.yml
+
       - name: Write workflow summary
         run: |
           if [ "${{ steps.existing.outputs.release_required }}" = "false" ]; then
@@ -182,7 +214,7 @@ jobs:
             exit 0
           fi
 
-          printf "Created automated release candidate \`%s\` for stable target \`%s\` and validated the prerelease publish path (%s bump from \`%s\`). Promote it with the \`Promote Release Candidate\` workflow when it is ready for stable publication.\n" \
+          printf "Created automated release candidate \`%s\`, validated the prerelease publish path, and promoted it to stable \`%s\` (%s bump from \`%s\`).\n" \
             "${{ steps.candidate.outputs.candidate_tag }}" \
             "${{ steps.candidate.outputs.stable_tag }}" \
             "${{ steps.release.outputs.bump }}" \

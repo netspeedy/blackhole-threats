@@ -13,8 +13,8 @@ public.
 | `main` | Supported for active development and validation |
 | Older releases | Not supported unless maintainers explicitly say otherwise |
 
-Security fixes normally flow through `main`, then the automated release
-candidate path, then stable promotion when appropriate.
+Security fixes normally flow through `main` and the automated release path,
+which promotes the release candidate to stable once its publish path passes.
 
 ## Reporting A Vulnerability
 
