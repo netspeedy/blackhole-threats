@@ -1,0 +1,11 @@
+{
+  "versions": [
+    {
+      "version": "v1.1",
+      "release": "v1.1.9",
+      "url": "/blackhole-threats/",
+      "notes": "https://github.com/netspeedy/blackhole-threats/releases/tag/v1.1.9",
+      "latest": true
+    }
+  ]
+}
