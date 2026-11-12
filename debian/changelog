@@ -1,3 +1,16 @@
+blackhole-threats (1.1.11-1) stable; urgency=medium
+
+  * Bump golang.org/x/text from 0.43.0 to 0.44.0.
+  * Bump vite from 8.3.6 to 8.3.8 in /website.
+  * Bump ci-info from 4.4.0 to 4.5.0 in /website.
+  * Bump astro from 7.4.7 to 7.4.8 in /website.
+  * Bump @astrojs/compiler-rs from 0.5.2 to 0.5.3 in /website.
+  * Bump @clack/prompts from 1.8.1 to 1.9.0 in /website.
+  * Bump rolldown from 1.2.16 to 1.2.19 in /website.
+  * Bump @rolldown/pluginutils from 1.0.1 to 1.1.0 in /website.
+
+ -- Simon Oakes <813389+soakes@users.noreply.github.com>  Thu, 12 Nov 2026 19:33:08 +0000
+
 blackhole-threats (1.1.10-1) stable; urgency=medium
 
   * Bump docker/login-action from 4.7.0 to 4.8.0.
