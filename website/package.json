@@ -21,7 +21,7 @@
     "astro": "7.4.9"
   },
   "devDependencies": {
-    "puppeteer": "25.16.0"
+    "puppeteer": "25.17.0"
   },
   "allowScripts": {
     "puppeteer": false,
