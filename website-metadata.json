@@ -1,0 +1,17 @@
+{
+  "site_url": "https://netspeedy.github.io/blackhole-threats/",
+  "latest_release": {
+    "tag_name": "v1.1.11",
+    "html_url": "https://github.com/netspeedy/blackhole-threats/releases/tag/v1.1.11"
+  },
+  "release_commit": "ece4f1d48faa44052e06a7dd1b9696e267986dc9",
+  "docs_versions": [],
+  "apt_repository": {
+    "available": true,
+    "url": "https://netspeedy.github.io/blackhole-threats/",
+    "suite": "stable",
+    "component": "main",
+    "key_url": "https://netspeedy.github.io/blackhole-threats/blackhole-threats-archive-keyring.gpg",
+    "fingerprint": "C578 26C0 5CD8 943F 7E33 46A8 9DEB A2D2 B18C 8A1D"
+  }
+}

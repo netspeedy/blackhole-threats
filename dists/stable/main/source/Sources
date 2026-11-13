@@ -1,0 +1,30 @@
+Format: 3.0 (quilt)
+Package: blackhole-threats
+Binary: blackhole-threats
+Architecture: linux-any
+Version: 1.1.11-1
+Priority: optional
+Section: unknown
+Maintainer: Simon Oakes <813389+soakes@users.noreply.github.com>
+Homepage: https://github.com/netspeedy/blackhole-threats
+Standards-Version: 4.6.2
+Vcs-Browser: https://github.com/netspeedy/blackhole-threats
+Vcs-Git: https://github.com/netspeedy/blackhole-threats.git
+Build-Depends: debhelper-compat (= 13), golang-any (>= 2:1.24~) | golang-go (>= 2:1.24~)
+Package-List:
+ blackhole-threats deb net optional arch=linux-any
+Directory: pool/main/b/blackhole-threats
+Checksums-Sha1:
+ 9cae7094303ce9d29f905073c1b595ce756db0cf 1188 blackhole-threats_1.1.11-1.dsc
+ eeb121b942fd836de30c15c6591f3c19b3fdd404 1395472 blackhole-threats_1.1.11.orig.tar.gz
+ df2c82bae72f9e97db0d96c243740ccff0cd7213 6476 blackhole-threats_1.1.11-1.debian.tar.xz
+Checksums-Sha256:
+ f171f6d7f09728b4cd8fdb9a9e3e94ef6f9cbe9e90913407c030ae3a5a4b939f 1188 blackhole-threats_1.1.11-1.dsc
+ 5ef5fd0b07af35635843bd576f1dc8bcf7b0b8f9c501bc3acfb2762b513a9c58 1395472 blackhole-threats_1.1.11.orig.tar.gz
+ c84141c4f60b13b3efeb27f46d0d6b95f1dc5ec945b978cfbf1a1813e8deb8eb 6476 blackhole-threats_1.1.11-1.debian.tar.xz
+Files:
+ dfd0c5bf99b5ed2d8774f40c34044e39 1188 blackhole-threats_1.1.11-1.dsc
+ 81ca1a77871e1a79e4969c0c8e5ffe3e 1395472 blackhole-threats_1.1.11.orig.tar.gz
+ dd5dfce9a6a2fe584ac28f9f08897b54 6476 blackhole-threats_1.1.11-1.debian.tar.xz
+Go-Import-Path: github.com/netspeedy/blackhole-threats
+

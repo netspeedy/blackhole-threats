@@ -1,0 +1,1 @@
+var e;function t(t){return e??=fetch(`${t}versions.json`).then(e=>e.ok?e.json():void 0).then(e=>Array.isArray(e?.versions)?e.versions:void 0).catch(()=>void 0),e}async function n(e,t){let n=location.pathname.startsWith(t)?location.pathname.slice(t.length):``;if(!n)return e;let r=`${e}${n}`;try{return(await fetch(r,{method:`HEAD`})).ok?r:e}catch{return e}}export{n,t};
