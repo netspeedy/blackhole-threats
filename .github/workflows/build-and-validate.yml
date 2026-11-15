@@ -375,4 +375,3 @@ jobs:
         with:
           name: blackhole-threats-${{ matrix.goos }}-${{ matrix.goarch }}
           path: dist/blackhole-threats-${{ matrix.goos }}-${{ matrix.goarch }}
-          retention-days: 1
