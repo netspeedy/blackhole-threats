@@ -322,6 +322,11 @@ automation.
   needed for release automation; do not introduce broader personal tokens.
 - If you change workflow behavior, update the README CI/CD, APT repository, or
   contribution sections in the same change when operator behavior changes.
+- Build and Validate and Container Image skip jobs for changes confined to
+  `website/`, `docs/`, `assets/`, `LICENSE` and root Markdown
+  (`docs/release-and-publishing.md` explains). If the binary, the Debian
+  package, the APT layout or the image ever read a file under one of those
+  paths, take it off the list in both workflows.
 
 ## Testing Guidelines
 

@@ -21,13 +21,48 @@ env:
   IMAGE_NAME: ${{ github.repository }}
   CHECKOUT_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.release_ref || github.sha }}
   RELEASE_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.release_ref || github.ref_name }}
+  # Nothing reads the build records build-push-action uploads.
+  DOCKER_BUILD_RECORD_RETENTION_DAYS: 1
 
 permissions:
   contents: read
 
 jobs:
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.classify.outputs.code }}
+
+    steps:
+      - name: Checkout repository
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+
+      # Only a pull request confined to paths the image never reads skips the build. Tags and
+      # dispatches always build, because publishing needs it and the pin refresh is dispatched.
+      - name: Classify the change
+        id: classify
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          code=true
+          if [ "${EVENT_NAME}" = pull_request ]; then
+            changed="$(git diff --name-only HEAD^1 HEAD)"
+            if [ -n "${changed}" ] && ! grep -qvE '^(website/|docs/|assets/|[^/]+\.md$|LICENSE$)' <<<"${changed}"; then
+              code=false
+            fi
+          fi
+          echo "code=${code}"
+          echo "code=${code}" >> "${GITHUB_OUTPUT}"
+
   docker-build:
     name: Validate Container Build
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
 
     steps:

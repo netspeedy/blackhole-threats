@@ -39,6 +39,15 @@ Purpose:
 This is the gate that must pass before automatic release automation acts on a
 push to `main`.
 
+A pull request or push to `main` confined to `website/`, `docs/`, `assets/`,
+`LICENSE` and Markdown files at the root skips the Debian package, APT layout
+and cross-build jobs, and runs Quality only when it touches the site, because
+the Go tests read its CLI reference page. The workflow still concludes
+successfully, so the merge and release workflows treat the change as
+validated. On `main` the change is measured from the last commit this workflow
+passed on, not the previous push, so a run cancelled by a newer push can't let
+code through untested. Manual dispatches always run everything.
+
 ### Automated Release Candidate
 
 Trigger:
@@ -114,7 +123,9 @@ Published outputs:
 
 Triggers:
 
-- pull requests for validation-only builds
+- pull requests for validation-only builds, skipped (with the run still
+  green) when the change is confined to the same paths Build and Validate
+  treats as docs-only
 - trusted `v*` tags
 - manual `workflow_dispatch` for validation, or with `release_ref=<tag>` for publish recovery
 
