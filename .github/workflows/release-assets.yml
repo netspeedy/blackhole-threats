@@ -114,6 +114,7 @@ jobs:
         with:
           name: binaries-${{ matrix.goos }}-${{ matrix.goarch }}
           path: dist/*.tar.gz
+          retention-days: 1
 
   packages:
     name: Build Debian ${{ matrix.arch }}
@@ -184,6 +185,7 @@ jobs:
           name: debian-${{ matrix.arch }}
           path: dist/*
           if-no-files-found: error
+          retention-days: 1
 
   source-packages:
     name: Build Debian Source Package
@@ -250,6 +252,7 @@ jobs:
           name: debian-source
           path: dist/*
           if-no-files-found: error
+          retention-days: 1
 
   publish:
     name: Publish GitHub Release
@@ -553,6 +556,7 @@ jobs:
         with:
           name: docs-archive
           path: ${{ steps.line.outputs.asset }}
+          retention-days: 1
 
   publish-docs-archive:
     name: Publish Archived Docs
